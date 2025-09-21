@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: localstack/localstack
+    environment:
+      - DEBUG=true
+      - EDGE_PORT=4566
+      - EAGER_SERVICE_LOADING=true
+      - AWS_DEFAULT_REGION=ap-northeast-1
+      - HOSTNAME_EXTERNAL=host.docker.internal
+      - DEFAULT_REGION=ap-northeast-1
+      - LAMBDA_EXECUTOR=docker
+      - "LAMBDA_DOCKER_FLAGS=--add-host host.docker.internal:host-gateway"
+      - LAMBDA_DOCKER_NETWORK=elearning-backend-service-network
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - elearning-backend-service-network
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=elearing-backend-service
+      - POSTGRES_USER=elearningservice
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - '5436:5432'
+    volumes:
+      - "./common-data/src/testFixtures/resources/sql:/docker-entrypoint-initdb.d"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - elearning-backend-service-network
+
+networks:
+  elearning-backend-service-network:
+    driver: bridge
+    name: elearning-backend-service-network
