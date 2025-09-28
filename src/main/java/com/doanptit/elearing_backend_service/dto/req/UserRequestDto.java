@@ -13,5 +13,6 @@ public class UserRequestDto {
     private String lastname;
     private Role role;   // ADMIN, TEACHER, STUDENT
     private String image;
+    private boolean active = true;
 
 }
