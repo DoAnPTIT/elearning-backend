@@ -32,15 +32,31 @@ dependencies {
 	// Swagger / OpenAPI (SpringDoc)
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
 
-	// Jackson YAML (bắt buộc cho SpringDoc)
+	// Jackson YAML (SpringDoc)
 	implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.2")
+	implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml")
 
+
+	//spring security
+	implementation("org.springframework.boot:spring-boot-starter-security")
+
+	// Validation
+	implementation("org.springframework.boot:spring-boot-starter-validation")
 
 	//lombok
 	compileOnly("org.projectlombok:lombok:1.18.34")
 	annotationProcessor("org.projectlombok:lombok:1.18.34")
 	testCompileOnly("org.projectlombok:lombok:1.18.34")
 	testAnnotationProcessor("org.projectlombok:lombok:1.18.34")
+
+	// JWT (JSON Web Token)
+	implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+
+	// Test dependencies
+	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testImplementation("org.springframework.security:spring-security-test")
 }
 
 tasks.withType<Test> {
