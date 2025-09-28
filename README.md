@@ -9,7 +9,6 @@
 -- Lệnh chạy:
  - Bước 1: git clone https://github.com/DoAnPTIT/elearning-backend.git
  - Bước 2: docker compose up -d
- - Bước 3: Chạy sql migration trong resource/db
- - Bước 4: ./gradlew clean build
- - Bước 5: ./gradlew bootRun
+ - Bước 3: ./gradlew clean build
+ - Bước 4: ./gradlew bootRun
  
