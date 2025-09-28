@@ -6,8 +6,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException; // 👈 Cần thêm
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.Objects;
 
 @RestControllerAdvice
 @Hidden
@@ -53,6 +56,22 @@ public class GlobalExceptionHandler {
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),
                         "Lỗi hệ thống nội bộ.",
                         ErrorCode.INTERNAL_ERROR.getCode()
+                ));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<?>> handleValidationException(MethodArgumentNotValidException ex) {
+        String message = Objects.requireNonNull(ex.getBindingResult().getFieldError()).getDefaultMessage();
+        String field = ex.getBindingResult().getFieldError().getField();
+
+        String detailedMessage = field + ": " + message;
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(
+                        HttpStatus.BAD_REQUEST.value(),
+                        detailedMessage,
+                        ErrorCode.VALIDATION_ERROR.getCode()
                 ));
     }
 }
