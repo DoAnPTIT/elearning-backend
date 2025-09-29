@@ -10,5 +10,4 @@ public interface UserService {
 
     UserResponseDto getUserById(Integer id);
 
-    UserResponseDto getCurrentUserInfo(); // user lấy info bản thân
 }
