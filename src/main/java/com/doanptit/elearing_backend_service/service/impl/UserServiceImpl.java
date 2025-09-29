@@ -47,4 +47,12 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto findUserById(Long id) {
         return null;
     }
+
+    @Override
+    public UserResponseDto getUserById(Integer id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return userMapper.toUserResponseDto(user);
+    }
+
 }

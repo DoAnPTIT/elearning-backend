@@ -7,4 +7,7 @@ public interface UserService {
     UserResponseDto createNewUserByAdmin(UserRequestDto request);
 
     UserResponseDto findUserById(Long id);
+
+    UserResponseDto getUserById(Integer id);
+
 }

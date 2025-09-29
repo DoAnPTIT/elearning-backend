@@ -19,7 +19,9 @@ public enum ErrorCode {
     USER_EMAIL_EXISTS("USER_EMAIL_EXISTS", "Email đã được sử dụng", HttpStatus.BAD_REQUEST),
 
     // 500 Internal Server Error (Lỗi chung)
-    INTERNAL_ERROR("INTERNAL_ERROR", "Lỗi hệ thống, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR);
+    INTERNAL_ERROR("INTERNAL_ERROR", "Lỗi hệ thống, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    UNAUTHORIZED("UNATHORIZED", "Bạn không có quyền truy cập", HttpStatus.UNAUTHORIZED);
 
     private final String code;
     private final String message;
