@@ -7,4 +7,8 @@ public interface UserService {
     UserResponseDto createNewUserByAdmin(UserRequestDto request);
 
     UserResponseDto findUserById(Long id);
+
+    UserResponseDto getUserById(Integer id);
+
+    UserResponseDto getCurrentUserInfo(); // user lấy info bản thân
 }

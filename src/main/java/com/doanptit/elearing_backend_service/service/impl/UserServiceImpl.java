@@ -47,4 +47,25 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto findUserById(Long id) {
         return null;
     }
+
+    @Override
+    public UserResponseDto getUserById(Integer id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return userMapper.toUserResponseDto(user);
+    }
+
+    @Override
+    public UserResponseDto getCurrentUserInfo() {
+        String email = Optional.ofNullable(
+                org.springframework.security.core.context.SecurityContextHolder.getContext()
+                        .getAuthentication()
+                        .getName()
+        ).orElseThrow(() -> new AppException(ErrorCode.UNAUTHORIZED));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return userMapper.toUserResponseDto(user);
+    }
 }
