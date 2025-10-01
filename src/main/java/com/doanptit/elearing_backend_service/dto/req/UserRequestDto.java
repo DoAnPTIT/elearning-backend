@@ -1,6 +1,7 @@
 package com.doanptit.elearing_backend_service.dto.req;
 
 import com.doanptit.elearing_backend_service.enums.Role;
+import com.doanptit.elearing_backend_service.validator.ValidEnum;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -26,7 +27,8 @@ public class UserRequestDto {
     private String lastname;
 
     @NotNull(message = "Vai trò (Role) không được để trống")
-    private Role role;
+    @ValidEnum(enumClass = Role.class, message = "Vai trò không hợp lệ")
+    private String role;
 
     private String image;
 

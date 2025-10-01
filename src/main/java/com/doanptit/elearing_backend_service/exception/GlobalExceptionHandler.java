@@ -4,7 +4,8 @@ import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException; // 👈 Cần thêm
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,17 +49,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Object>> handleException(Exception ex) {
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR) // 500
-                .body(ApiResponse.error(
-                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                        "Lỗi hệ thống nội bộ.",
-                        ErrorCode.INTERNAL_ERROR.getCode()
-                ));
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidationException(MethodArgumentNotValidException ex) {
         String message = Objects.requireNonNull(ex.getBindingResult().getFieldError()).getDefaultMessage();
@@ -72,6 +62,24 @@ public class GlobalExceptionHandler {
                         HttpStatus.BAD_REQUEST.value(),
                         detailedMessage,
                         ErrorCode.VALIDATION_ERROR.getCode()
+                ));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<?>> handleEnumParseError(HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.error(400, "Giá trị enum không hợp lệ", "ENUM_INVALID")
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleException(Exception ex) {
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR) // 500
+                .body(ApiResponse.error(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "Lỗi hệ thống nội bộ.",
+                        ErrorCode.INTERNAL_ERROR.getCode()
                 ));
     }
 }

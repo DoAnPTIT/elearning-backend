@@ -2,6 +2,7 @@ package com.doanptit.elearing_backend_service.service.impl;
 
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
+import com.doanptit.elearing_backend_service.enums.Role;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.UserMapper;
@@ -34,7 +35,7 @@ public class UserServiceImpl implements UserService {
                 .password(encodedPassword)
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
-                .role(request.getRole())
+                .role(Role.valueOf(request.getRole()))
                 .active(request.isActive())
                 .build();
 
