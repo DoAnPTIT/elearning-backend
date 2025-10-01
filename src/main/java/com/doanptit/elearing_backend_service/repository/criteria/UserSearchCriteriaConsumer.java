@@ -19,6 +19,7 @@ public class UserSearchCriteriaConsumer implements Consumer<SearchCriteria> {
     private CriteriaBuilder builder;
     private Predicate predicate;
     private Root root;
+
     @Override
     public void accept(SearchCriteria param) {
         if(param.getOperation().equals(">")){

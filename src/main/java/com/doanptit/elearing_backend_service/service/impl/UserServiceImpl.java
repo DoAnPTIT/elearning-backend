@@ -10,10 +10,17 @@ import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 
 @Service
 @RequiredArgsConstructor
@@ -55,5 +62,26 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         return userMapper.toUserResponseDto(user);
     }
+
+    @Override
+    public Page<UserResponseDto> findAllUsers(int pageNo, int pageSize, String... sorts) {
+        List<Sort.Order> orders = new ArrayList<>();
+        if(sorts!=null){
+            for(String sortBy: sorts){
+                Pattern pattern = Pattern.compile("(\\w+?)(:)(.*)");
+                Matcher matcher = pattern.matcher(sortBy);
+                if(matcher.find()){
+                    if(matcher.group(3).equalsIgnoreCase("asc")){
+                        orders.add(new Sort.Order(Sort.Direction.ASC, matcher.group(1)));
+                    }else{
+                        orders.add(new Sort.Order(Sort.Direction.DESC, matcher.group(1)));
+                    }
+                }
+            }
+        }
+        Pageable pageable = PageRequest.of(pageNo,pageSize,Sort.by(orders));
+        return this.userRepository.findAll(pageable).map(userMapper::toUserResponseDto);
+    }
+
 
 }
