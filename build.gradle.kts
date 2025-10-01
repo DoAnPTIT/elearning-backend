@@ -54,6 +54,11 @@ dependencies {
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
 
+	// AWS SDK v2 for DynamoDB
+	val awsSdkVersion = "2.26.24"
+	implementation("software.amazon.awssdk:dynamodb:$awsSdkVersion")
+	implementation("software.amazon.awssdk:url-connection-client:$awsSdkVersion")
+
 	//mapstruct
 	val mapstructVersion = "1.5.5.Final"
 	implementation("org.mapstruct:mapstruct:$mapstructVersion")

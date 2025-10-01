@@ -7,15 +7,15 @@ services:
       - DEBUG=true
       - EDGE_PORT=4566
       - EAGER_SERVICE_LOADING=true
-      - AWS_DEFAULT_REGION=ap-northeast-1
+      - AWS_DEFAULT_REGION=us-east-1
       - HOSTNAME_EXTERNAL=host.docker.internal
-      - DEFAULT_REGION=ap-northeast-1
+      - DEFAULT_REGION=us-east-1
       - LAMBDA_EXECUTOR=docker
       - "LAMBDA_DOCKER_FLAGS=--add-host host.docker.internal:host-gateway"
       - LAMBDA_DOCKER_NETWORK=elearning-backend-service-network
       - DOCKER_HOST=unix:///var/run/docker.sock
     ports:
-      - "4566:4566"
+      - "4577:4566"
       - "4510-4559:4510-4559"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"

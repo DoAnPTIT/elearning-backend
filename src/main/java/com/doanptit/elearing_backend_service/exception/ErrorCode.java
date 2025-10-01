@@ -21,7 +21,13 @@ public enum ErrorCode {
     // 500 Internal Server Error (Lỗi chung)
     INTERNAL_ERROR("INTERNAL_ERROR", "Lỗi hệ thống, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
 
-    UNAUTHORIZED("UNATHORIZED", "Bạn không có quyền truy cập", HttpStatus.UNAUTHORIZED);
+    UNAUTHORIZED("UNATHORIZED", "Bạn không có quyền truy cập", HttpStatus.UNAUTHORIZED),
+
+    INVALID_TOKEN("INVALID_TOKEN", "Token không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    TOKEN_BLACKLIST_FAILED("TOKEN_BLACKLIST_FAILED", "Không thể vô hiệu hóa token do lỗi hệ thống", HttpStatus.INTERNAL_SERVER_ERROR),
+    TOKEN_NOT_PROVIDED("TOKEN_NOT_PROVIDED", "Token xác thực không được cung cấp", HttpStatus.UNAUTHORIZED),
+    TOKEN_EXPIRED("TOKEN_EXPIRED", "Token đã hết hạn", HttpStatus.UNAUTHORIZED);
+
 
     private final String code;
     private final String message;
