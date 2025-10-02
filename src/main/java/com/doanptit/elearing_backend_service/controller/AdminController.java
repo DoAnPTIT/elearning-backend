@@ -32,4 +32,12 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(userDto));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/users")
+    public ResponseEntity<ApiResponse<?>> getAllUsers(@RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "10") int size,
+                                                        @RequestParam(defaultValue = "id,asc") String[] sort) {
+        return ResponseEntity.ok(ApiResponse.success(userService.findAllUsers(page, size, sort)));
+    }
+
 }
