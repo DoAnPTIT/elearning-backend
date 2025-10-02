@@ -1,0 +1,16 @@
+package com.doanptit.elearing_backend_service.dto.req;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class ChangePasswordRequest {
+
+    @NotBlank(message = "Mật khẩu cũ không được để trống")
+    private String oldPassword;
+
+    @NotBlank(message = "Mật khẩu mới không được để trống")
+    private String newPassword;
+}
