@@ -46,8 +46,8 @@ public class AdminController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/statistics")
-    public ResponseEntity<ApiResponse<AdminStatisticsDto>> getStatistics() {
-        AdminStatisticsDto stats = adminStatisticsService.getStatistics();
+    public ResponseEntity<ApiResponse<AdminStatisticsDto>> getStatisticsQuantityByRole() {
+        AdminStatisticsDto stats = adminStatisticsService.getStatisticsQuantityByRole();
         return ResponseEntity.ok(ApiResponse.success(stats));
     }
 

@@ -16,15 +16,15 @@ public class AdminStatisticsServiceImpl implements AdminStatisticsService {
     private final CourseRepository courseRepository;
 
     @Override
-    public AdminStatisticsDto getStatistics() {
-        long totalStudents = userRepository.countByRole(Role.STUDENT);
-        long totalTeachers = userRepository.countByRole(Role.TEACHER);
+    public AdminStatisticsDto getStatisticsQuantityByRole() {
+        int totalStudents = userRepository.countByRole(Role.STUDENT);
+        int totalTeachers = userRepository.countByRole(Role.TEACHER);
         long totalCourses = courseRepository.count();
 
         return AdminStatisticsDto.builder()
                 .totalStudents(totalStudents)
                 .totalTeachers(totalTeachers)
-                .totalCourses(totalCourses)
+                .totalCourses((int) totalCourses)
                 .build();
     }
 }
