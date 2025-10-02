@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
+import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.enums.Role;
@@ -82,6 +83,29 @@ public class UserServiceImpl implements UserService {
         Pageable pageable = PageRequest.of(pageNo,pageSize,Sort.by(orders));
         return this.userRepository.findAll(pageable).map(userMapper::toUserResponseDto);
     }
+
+        @Override
+    public void changePassword(Integer id, String email, ChangePasswordRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Đảm bảo user chỉ đổi mật khẩu của chính mình
+        if (!user.getEmail().equals(email)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_INCORRECT);
+        }
+
+        if (request.getOldPassword().equals(request.getNewPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_DUPLICATE);
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
 
 
 }

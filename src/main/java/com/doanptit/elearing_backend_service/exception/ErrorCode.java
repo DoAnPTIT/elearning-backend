@@ -26,7 +26,12 @@ public enum ErrorCode {
     INVALID_TOKEN("INVALID_TOKEN", "Token không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     TOKEN_BLACKLIST_FAILED("TOKEN_BLACKLIST_FAILED", "Không thể vô hiệu hóa token do lỗi hệ thống", HttpStatus.INTERNAL_SERVER_ERROR),
     TOKEN_NOT_PROVIDED("TOKEN_NOT_PROVIDED", "Token xác thực không được cung cấp", HttpStatus.UNAUTHORIZED),
-    TOKEN_EXPIRED("TOKEN_EXPIRED", "Token đã hết hạn", HttpStatus.UNAUTHORIZED);
+    TOKEN_EXPIRED("TOKEN_EXPIRED", "Token đã hết hạn", HttpStatus.UNAUTHORIZED),
+
+    // Lỗi khi đặt lại mật khẩu
+    PASSWORD_INCORRECT("PASSWORD_INCORRECT", "Mật khẩu cũ không chính xác", HttpStatus.BAD_REQUEST),
+    PASSWORD_DUPLICATE("PASSWORD_DUPLICATE", "Mật khẩu mới không được trùng với mật khẩu cũ", HttpStatus.BAD_REQUEST);
+
 
 
     private final String code;
