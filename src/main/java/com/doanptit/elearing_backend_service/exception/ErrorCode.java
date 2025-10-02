@@ -30,8 +30,8 @@ public enum ErrorCode {
 
     // Lỗi khi đặt lại mật khẩu
     PASSWORD_INCORRECT("PASSWORD_INCORRECT", "Mật khẩu cũ không chính xác", HttpStatus.BAD_REQUEST),
-    PASSWORD_DUPLICATE("PASSWORD_DUPLICATE", "Mật khẩu mới không được trùng với mật khẩu cũ", HttpStatus.BAD_REQUEST);
-
+    PASSWORD_DUPLICATE("PASSWORD_DUPLICATE", "Mật khẩu mới không được trùng với mật khẩu cũ", HttpStatus.BAD_REQUEST),
+    PASSWORD_NOT_MATCH( "PASSWORD_NOT_MATCH", "Mật khẩu mới và xác nhận không khớp", HttpStatus.BAD_REQUEST);
 
 
     private final String code;

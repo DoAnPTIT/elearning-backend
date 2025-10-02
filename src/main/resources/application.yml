@@ -29,4 +29,16 @@ spring:
     secret: "${JWT_SECRET:defaultSecretKey123456789012345678901234567890}"
     expiration: 86400000
 
+  spring:
+    mail:
+      host: smtp.gmail.com
+      port: 587
+      username: hvmhieu2003@gmail.com
+      password: vbun wqya sdkd lomv
+      properties:
+        mail:
+          smtp:
+            auth: true
+            starttls:
+              enable: true
 
