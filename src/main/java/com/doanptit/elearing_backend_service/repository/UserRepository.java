@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.repository;
 
+import com.doanptit.elearing_backend_service.enums.Role;
 import com.doanptit.elearing_backend_service.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,4 +11,5 @@ public interface UserRepository extends JpaRepository<User,Integer> {
 
 
     Optional<User> findByEmail(String email);
+    int countByRole(Role role);
 }

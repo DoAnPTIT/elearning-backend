@@ -2,7 +2,9 @@ package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
+import com.doanptit.elearing_backend_service.dto.res.AdminStatisticsDto;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
+import com.doanptit.elearing_backend_service.service.AdminStatisticsService;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final UserService userService;
+    private final AdminStatisticsService adminStatisticsService;
+
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/users")
@@ -39,5 +43,13 @@ public class AdminController {
                                                         @RequestParam(defaultValue = "id,asc") String[] sort) {
         return ResponseEntity.ok(ApiResponse.success(userService.findAllUsers(page, size, sort)));
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/statistics")
+    public ResponseEntity<ApiResponse<AdminStatisticsDto>> getStatisticsQuantityByRole() {
+        AdminStatisticsDto stats = adminStatisticsService.getStatisticsQuantityByRole();
+        return ResponseEntity.ok(ApiResponse.success(stats));
+    }
+
 
 }
