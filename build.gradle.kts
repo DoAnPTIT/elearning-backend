@@ -70,7 +70,7 @@ dependencies {
 	testImplementation("org.springframework.security:spring-security-test")
 
     // Email
-    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.springframework.boot:spring-boot-starter-mail:3.5.6")
 
 }
 

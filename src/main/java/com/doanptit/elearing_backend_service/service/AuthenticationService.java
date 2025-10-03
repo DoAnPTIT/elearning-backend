@@ -13,8 +13,6 @@ import io.jsonwebtoken.JwtException;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -36,7 +34,7 @@ public class AuthenticationService {
     private final JwtBlacklistService jwtBlacklistService;
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
     public LoginResponse login(LoginRequest request) {
@@ -75,15 +73,13 @@ public class AuthenticationService {
         }
     }
 
-    // 🔹 Bước 1: Forgot password
+    // Forgot password
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Xóa token cũ nếu có
         passwordResetTokenRepository.deleteByUser(user);
 
-        // Sinh token mới
         String token = UUID.randomUUID().toString();
         LocalDateTime expiryDate = LocalDateTime.now().plusMinutes(15);
 
@@ -95,11 +91,17 @@ public class AuthenticationService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        // Gửi email
-        sendResetPasswordEmail(user.getEmail(), token);
+        String resetLink = "http://localhost:8080/api/auth/reset-password?token=" + token;
+        String subject = "[Elearning PTIT] Yêu cầu đặt lại mật khẩu";
+        String body = "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n\n"
+                + "👉 Nhấn vào đây để đặt lại mật khẩu: " + resetLink
+                + "\n\nLink này chỉ có hiệu lực trong 15 phút."
+                + "\nNếu bạn không yêu cầu, vui lòng bỏ qua email này.";
+
+        emailService.sendEmail(user.getEmail(), subject, body);
     }
 
-    // 🔹 Bước 2: Reset password
+    // Reset password
     public void resetPassword(String token, String newPassword, String confirmPassword) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_TOKEN));
@@ -120,18 +122,4 @@ public class AuthenticationService {
         passwordResetTokenRepository.delete(resetToken);
     }
 
-    // 🔹 Hàm gửi email
-    private void sendResetPasswordEmail(String to, String token) {
-        String resetLink = "http://localhost:8080/api/auth/reset-password?token=" + token;
-
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("[Elearning PTIT] Yêu cầu đặt lại mật khẩu");
-        message.setText("Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n\n"
-                + "👉 Nhấn vào đây để đặt lại mật khẩu: " + resetLink
-                + "\n\nLink này chỉ có hiệu lực trong 15 phút."
-                + "\nNếu bạn không yêu cầu, vui lòng bỏ qua email này.");
-
-        mailSender.send(message);
-    }
 }
