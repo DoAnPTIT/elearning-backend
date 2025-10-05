@@ -78,7 +78,7 @@ public class AuthenticationService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        passwordResetTokenRepository.deleteByUser(user);
+        passwordResetTokenRepository.softDeleteByUser(user);
 
         String token = UUID.randomUUID().toString();
         LocalDateTime expiryDate = LocalDateTime.now().plusMinutes(15);
@@ -103,7 +103,7 @@ public class AuthenticationService {
 
     // Reset password
     public void resetPassword(String token, String newPassword, String confirmPassword) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenAndDeletedOnFalse(token)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_TOKEN));
 
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
@@ -118,8 +118,9 @@ public class AuthenticationService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        // Xóa token sau khi dùng
-        passwordResetTokenRepository.delete(resetToken);
+        // Đánh dấu token đã sử dụng
+        resetToken.setDeletedOn(true);
+        passwordResetTokenRepository.save(resetToken);
     }
 
 }

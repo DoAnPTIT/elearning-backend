@@ -25,5 +25,8 @@ public class PasswordResetToken {
 
     @Column(nullable = false)
     private LocalDateTime expiryDate;
+
+    @Column(nullable = false)
+    private boolean deletedOn = false;
 }
 
