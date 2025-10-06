@@ -10,6 +10,7 @@ import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.PasswordResetTokenRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import io.jsonwebtoken.JwtException;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +75,7 @@ public class AuthenticationService {
     }
 
     // Forgot password
+    @Transactional
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -102,6 +104,7 @@ public class AuthenticationService {
     }
 
     // Reset password
+    @Transactional
     public void resetPassword(String token, String newPassword, String confirmPassword) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenAndDeletedOnFalse(token)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_TOKEN));

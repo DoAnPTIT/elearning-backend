@@ -23,10 +23,10 @@ public class PasswordResetToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
+    @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiryDate;
 
-    @Column(nullable = false)
+    @Column(name = "delete_on", nullable = false)
     private boolean deletedOn = false;
 }
 
