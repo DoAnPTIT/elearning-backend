@@ -68,6 +68,10 @@ dependencies {
 	// Test dependencies
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
+
+    // Email
+    implementation("org.springframework.boot:spring-boot-starter-mail:3.5.6")
+
 }
 
 tasks.withType<Test> {
