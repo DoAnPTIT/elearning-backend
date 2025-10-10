@@ -31,12 +31,14 @@ public class UserController {
     }
 
     @PutMapping("/edit-profile")
-    public ResponseEntity<UserResponseDto> updateProfile(
+    public ResponseEntity<ApiResponse<UserResponseDto>> updateProfile(
             Authentication authentication,
             @Valid @RequestBody UpdateProfileRequest request) {
 
         String email = authentication.getName();
         UserResponseDto updatedUser = userService.updateProfile(email, request);
-        return ResponseEntity.ok(updatedUser);
+
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin cá nhân thành công", updatedUser));
     }
+
 }

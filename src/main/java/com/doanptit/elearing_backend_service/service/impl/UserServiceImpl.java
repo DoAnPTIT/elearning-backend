@@ -114,9 +114,8 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        user.setFirstname(request.getFirstname());
-        user.setLastname(request.getLastname());
-        user.setImage(request.getImage());
+        // Cập nhật field từ DTO sang entity bằng MapStruct
+        userMapper.updateUserFromDto(request, user);
 
         userRepository.save(user);
 
