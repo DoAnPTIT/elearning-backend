@@ -1,6 +1,7 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
+import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.enums.Role;
@@ -10,6 +11,7 @@ import com.doanptit.elearing_backend_service.mapper.UserMapper;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.UserService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -84,7 +86,7 @@ public class UserServiceImpl implements UserService {
         return this.userRepository.findAll(pageable).map(userMapper::toUserResponseDto);
     }
 
-        @Override
+    @Override
     public void changePassword(Integer id, String email, ChangePasswordRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -106,6 +108,19 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public UserResponseDto updateProfile(String email, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        user.setFirstname(request.getFirstname());
+        user.setLastname(request.getLastname());
+        user.setImage(request.getImage());
+
+        userRepository.save(user);
+
+        return userMapper.toUserResponseDto(user);
+    }
 
 }
