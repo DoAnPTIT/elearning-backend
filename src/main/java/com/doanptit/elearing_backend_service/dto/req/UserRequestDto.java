@@ -21,7 +21,7 @@ public class UserRequestDto {
     private String password;
 
     @NotBlank(message = "Họ không được để trống")
-    @Size(max = 20, message = "Họ không được vượt quá 50 ký tự")
+    @Size(max = 20, message = "Họ không được vượt quá 20 ký tự")
     private String firstname;
 
     private String lastname;
