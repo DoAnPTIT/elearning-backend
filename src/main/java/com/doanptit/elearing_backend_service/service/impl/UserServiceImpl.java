@@ -115,7 +115,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         // Cập nhật field từ DTO sang entity bằng MapStruct
-        userMapper.updateUserFromDto(request, user);
+        userMapper.updateUserFromDto(user, request);
 
         userRepository.save(user);
 
