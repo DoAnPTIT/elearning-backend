@@ -31,8 +31,11 @@ public enum ErrorCode {
     // Lỗi khi đặt lại mật khẩu
     PASSWORD_INCORRECT("PASSWORD_INCORRECT", "Mật khẩu cũ không chính xác", HttpStatus.BAD_REQUEST),
     PASSWORD_DUPLICATE("PASSWORD_DUPLICATE", "Mật khẩu mới không được trùng với mật khẩu cũ", HttpStatus.BAD_REQUEST),
-    PASSWORD_NOT_MATCH( "PASSWORD_NOT_MATCH", "Mật khẩu mới và xác nhận không khớp", HttpStatus.BAD_REQUEST);
+    PASSWORD_NOT_MATCH( "PASSWORD_NOT_MATCH", "Mật khẩu mới và xác nhận không khớp", HttpStatus.BAD_REQUEST),
 
+    FILE_IS_EMPTY("FILE_IS_EMPTY", "File không được để trống", HttpStatus.BAD_REQUEST),
+    INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST),
+    FILE_PROCESSING_ERROR("FILE_PROCESSING_ERROR", "Tạo file lỗi",  HttpStatus.BAD_REQUEST );
 
     private final String code;
     private final String message;
