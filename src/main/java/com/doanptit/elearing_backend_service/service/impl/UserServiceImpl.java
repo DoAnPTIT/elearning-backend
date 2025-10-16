@@ -53,6 +53,7 @@ public class UserServiceImpl implements UserService {
                 .password(encodedPassword)
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
+                .dateOfBirth(request.getDateOfBirth())
                 .role(Role.valueOf(request.getRole()))
                 .active(request.isActive())
                 .build();
