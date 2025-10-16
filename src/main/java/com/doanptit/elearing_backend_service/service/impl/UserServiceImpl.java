@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -53,6 +55,7 @@ public class UserServiceImpl implements UserService {
                 .password(encodedPassword)
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
+                .dateOfBirth(request.getDateOfBirth())
                 .role(Role.valueOf(request.getRole()))
                 .active(request.isActive())
                 .build();
@@ -160,6 +163,7 @@ public class UserServiceImpl implements UserService {
                     String firstname = getCellValueAsString(currentRow.getCell(0));
                     String lastname = getCellValueAsString(currentRow.getCell(1));
                     String email = getCellValueAsString(currentRow.getCell(2));
+                    String dobString = getCellValueAsString(currentRow.getCell(3));
 
                     if (email == null || email.isBlank()) {
                         throw new IllegalArgumentException("Email is required.");
@@ -168,7 +172,12 @@ public class UserServiceImpl implements UserService {
                        throw new AppException(ErrorCode.USER_EMAIL_EXISTS);
                     }
 
-                    String defaultPassword = "123456789";
+                    LocalDate dob = parseDate(dobString);
+
+                    // Mật khẩu mặc định = ngày sinh (định dạng ddMMyyyy)
+                    String defaultPassword = dob != null
+                            ? dob.format(DateTimeFormatter.ofPattern("ddMMyyyy"))
+                            : "12345678";
                     String encodedPassword = passwordEncoder.encode(defaultPassword);
 
                     User newUser = User.builder()
@@ -178,6 +187,7 @@ public class UserServiceImpl implements UserService {
                             .password(encodedPassword)
                             .role(role)
                             .active(true)
+                            .dateOfBirth(dob)
                             .build();
 
                     userRepository.save(newUser);
@@ -190,7 +200,6 @@ public class UserServiceImpl implements UserService {
                 }
             }
         } catch (Exception e) {
-
             throw new AppException(ErrorCode.FILE_PROCESSING_ERROR);
         }
         return result;
@@ -224,6 +233,34 @@ public class UserServiceImpl implements UserService {
             default:
                 return null;
         }
+    }
+
+    private LocalDate parseDate(String dobString) {
+        if (dobString == null || dobString.isBlank()) {
+            return null;
+        }
+
+        // Trường hợp Excel lưu ngày dưới dạng số (ví dụ: 45230)
+        try {
+            double numericValue = Double.parseDouble(dobString);
+            return LocalDate.of(1900, 1, 1).plusDays((long) numericValue - 2);
+        } catch (NumberFormatException ignored) {}
+
+        // Các định dạng chuỗi phổ biến
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+                DateTimeFormatter.ofPattern("yyyy/MM/dd")
+        );
+
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                return LocalDate.parse(dobString, formatter);
+            } catch (Exception ignored) {}
+        }
+
+        throw new IllegalArgumentException("Định dạng ngày sinh không hợp lệ: " + dobString);
     }
 
 }

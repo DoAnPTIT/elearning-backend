@@ -2,12 +2,13 @@ package com.doanptit.elearing_backend_service.dto.req;
 
 import com.doanptit.elearing_backend_service.enums.Role;
 import com.doanptit.elearing_backend_service.validator.ValidEnum;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -25,6 +26,11 @@ public class UserRequestDto {
     private String firstname;
 
     private String lastname;
+
+    @JsonProperty("date_of_birth")
+    @Past(message = "Ngày sinh phải nhỏ hơn ngày hiện tại")
+    @JsonFormat(pattern = "dd-MM-yyyy")
+    private LocalDate dateOfBirth;
 
     @NotNull(message = "Vai trò (Role) không được để trống")
     @ValidEnum(enumClass = Role.class, message = "Vai trò không hợp lệ")
