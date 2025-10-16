@@ -1,6 +1,7 @@
 package com.doanptit.elearing_backend_service.model;
 
 import com.doanptit.elearing_backend_service.enums.Role;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -34,6 +35,7 @@ public class User extends BaseEntity implements UserDetails {
     private String lastname;
 
     @Column(name = "date_of_birth")
+    @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfBirth;
 
     @Enumerated(EnumType.STRING)

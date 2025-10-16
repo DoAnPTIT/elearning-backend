@@ -2,6 +2,7 @@ package com.doanptit.elearing_backend_service.dto.req;
 
 import com.doanptit.elearing_backend_service.enums.Role;
 import com.doanptit.elearing_backend_service.validator.ValidEnum;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class UserRequestDto {
 
     @JsonProperty("date_of_birth")
     @Past(message = "Ngày sinh phải nhỏ hơn ngày hiện tại")
+    @JsonFormat(pattern = "dd-MM-yyyy")
     private LocalDate dateOfBirth;
 
     @NotNull(message = "Vai trò (Role) không được để trống")
