@@ -3,6 +3,7 @@ package com.doanptit.elearing_backend_service.service.impl;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
+import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.enums.Role;
 import com.doanptit.elearing_backend_service.exception.AppException;
@@ -13,13 +14,22 @@ import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,6 +55,7 @@ public class UserServiceImpl implements UserService {
                 .password(encodedPassword)
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
+                .dateOfBirth(request.getDateOfBirth())
                 .role(Role.valueOf(request.getRole()))
                 .active(request.isActive())
                 .build();
@@ -114,12 +125,142 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Cập nhật field từ DTO sang entity bằng MapStruct
         userMapper.updateUserFromDto(user, request);
 
         userRepository.save(user);
 
         return userMapper.toUserResponseDto(user);
+    }
+
+    @Override
+    @Transactional
+    public BatchCreationResult createUsersFromExcel(MultipartFile file, String roleStr) {
+        if (file.isEmpty()) {
+            throw new AppException(ErrorCode.FILE_IS_EMPTY);
+        }
+
+        Role role;
+        try {
+            role = Role.valueOf(roleStr.trim().toUpperCase());
+            if (role != Role.STUDENT && role != Role.TEACHER) {
+                throw new AppException(ErrorCode.INVALID_ROLE);
+            }
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+
+        BatchCreationResult result = new BatchCreationResult();
+        try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Iterator<Row> rows = sheet.iterator();
+            if (rows.hasNext()) rows.next();
+
+            int rowNumber = 1;
+            while (rows.hasNext()) {
+                Row currentRow = rows.next();
+                rowNumber++;
+                try {
+                    String firstname = getCellValueAsString(currentRow.getCell(0));
+                    String lastname = getCellValueAsString(currentRow.getCell(1));
+                    String email = getCellValueAsString(currentRow.getCell(2));
+                    String dobString = getCellValueAsString(currentRow.getCell(3));
+
+                    if (email == null || email.isBlank()) {
+                        throw new IllegalArgumentException("Email is required.");
+                    }
+                    if (userRepository.findByEmail(email).isPresent()) {
+                       throw new AppException(ErrorCode.USER_EMAIL_EXISTS);
+                    }
+
+                    LocalDate dob = parseDate(dobString);
+
+                    // Mật khẩu mặc định = ngày sinh (định dạng ddMMyyyy)
+                    String defaultPassword = dob != null
+                            ? dob.format(DateTimeFormatter.ofPattern("ddMMyyyy"))
+                            : "12345678";
+                    String encodedPassword = passwordEncoder.encode(defaultPassword);
+
+                    User newUser = User.builder()
+                            .firstname(firstname)
+                            .lastname(lastname)
+                            .email(email)
+                            .password(encodedPassword)
+                            .role(role)
+                            .active(true)
+                            .dateOfBirth(dob)
+                            .build();
+
+                    userRepository.save(newUser);
+                    result.setSuccessCount(result.getSuccessCount() + 1);
+
+                } catch (Exception e) {
+                    result.setFailureCount(result.getFailureCount() + 1);
+                    String errorMessage = "Error at row " + rowNumber + ": " + e.getMessage();
+                    result.getErrorMessages().add(errorMessage);
+                }
+            }
+        } catch (Exception e) {
+            throw new AppException(ErrorCode.FILE_PROCESSING_ERROR);
+        }
+        return result;
+    }
+
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) {
+            return null;
+        }
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+
+            case NUMERIC:
+                double numericValue = cell.getNumericCellValue();
+                if (numericValue == (long) numericValue) {
+                    return String.format("%d", (long) numericValue);
+                } else {
+                    return String.valueOf(numericValue);
+                }
+
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+
+            case FORMULA:
+                return cell.getCellFormula();
+            case BLANK:
+                return "";
+
+            default:
+                return null;
+        }
+    }
+
+    private LocalDate parseDate(String dobString) {
+        if (dobString == null || dobString.isBlank()) {
+            return null;
+        }
+
+        // Trường hợp Excel lưu ngày dưới dạng số (ví dụ: 45230)
+        try {
+            double numericValue = Double.parseDouble(dobString);
+            return LocalDate.of(1900, 1, 1).plusDays((long) numericValue - 2);
+        } catch (NumberFormatException ignored) {}
+
+        // Các định dạng chuỗi phổ biến
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+                DateTimeFormatter.ofPattern("yyyy/MM/dd")
+        );
+
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                return LocalDate.parse(dobString, formatter);
+            } catch (Exception ignored) {}
+        }
+
+        throw new IllegalArgumentException("Định dạng ngày sinh không hợp lệ: " + dobString);
     }
 
 }

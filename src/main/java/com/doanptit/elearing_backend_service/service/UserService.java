@@ -3,8 +3,10 @@ package com.doanptit.elearing_backend_service.service;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
+import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
 
 
 public interface UserService {
@@ -19,4 +21,6 @@ public interface UserService {
     void changePassword(Integer id, String email, ChangePasswordRequest request);
 
     UserResponseDto updateProfile(String email, UpdateProfileRequest request);
+
+    BatchCreationResult createUsersFromExcel(MultipartFile file, String role);
 }

@@ -72,6 +72,10 @@ dependencies {
     // Email
     implementation("org.springframework.boot:spring-boot-starter-mail:3.5.6")
 
+	//  Thư viện để đọc và ghi file Microsoft Excel
+	implementation("org.apache.poi:poi:5.2.5")
+	implementation("org.apache.poi:poi-ooxml:5.2.5")
+
 }
 
 tasks.withType<Test> {

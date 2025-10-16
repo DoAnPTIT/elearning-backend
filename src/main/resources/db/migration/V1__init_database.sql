@@ -4,6 +4,7 @@ CREATE TABLE users (
                        password VARCHAR(255) NOT NULL,
                        firstname VARCHAR(50),
                        lastname VARCHAR(50),
+                       date_of_birth DATE,
                        role INT,
                        image VARCHAR(255),
                        active BOOLEAN DEFAULT TRUE,

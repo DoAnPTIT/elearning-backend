@@ -3,6 +3,7 @@ package com.doanptit.elearing_backend_service.controller;
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.AdminStatisticsDto;
+import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.service.AdminStatisticsService;
 import com.doanptit.elearing_backend_service.service.UserService;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -51,5 +53,15 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(stats));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/users/batch-create")
+    public ResponseEntity<ApiResponse<BatchCreationResult>> createUsersFromExcel(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("role") String role) {
+
+        var result = userService.createUsersFromExcel(file, role);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(result));
+    }
 
 }
