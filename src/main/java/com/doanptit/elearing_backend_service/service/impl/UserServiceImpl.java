@@ -129,8 +129,6 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        System.out.println("DOB trong request: " + request.getDateOfBirth());
-
         return userMapper.toUserResponseDto(user);
     }
 
