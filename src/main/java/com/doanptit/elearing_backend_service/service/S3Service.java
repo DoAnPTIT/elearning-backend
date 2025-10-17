@@ -82,7 +82,7 @@ public class S3Service {
             throw new AppException(ErrorCode.FILE_INVALID_TYPE);
         }
 
-        if (file.getSize() > 2 * 1024 * 1024) { // 2MB
+        if (file.getSize() > 5 * 1024 * 1024) { // 2MB
             throw new AppException(ErrorCode.FILE_TOO_LARGE);
         }
     }
