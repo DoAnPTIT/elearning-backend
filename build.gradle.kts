@@ -56,6 +56,7 @@ dependencies {
 
 	// AWS SDK v2 for DynamoDB
 	val awsSdkVersion = "2.26.24"
+    implementation("software.amazon.awssdk:s3:${awsSdkVersion}")
 	implementation("software.amazon.awssdk:dynamodb:$awsSdkVersion")
 	implementation("software.amazon.awssdk:url-connection-client:$awsSdkVersion")
 
@@ -75,6 +76,9 @@ dependencies {
 	//  Thư viện để đọc và ghi file Microsoft Excel
 	implementation("org.apache.poi:poi:5.2.5")
 	implementation("org.apache.poi:poi-ooxml:5.2.5")
+
+    // Thumbnailator (dùng để resize ảnh về chuẩn 256x256)
+    implementation("net.coobird:thumbnailator:0.4.20")
 
 }
 

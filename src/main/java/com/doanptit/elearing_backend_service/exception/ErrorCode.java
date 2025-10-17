@@ -33,10 +33,14 @@ public enum ErrorCode {
     PASSWORD_DUPLICATE("PASSWORD_DUPLICATE", "Mật khẩu mới không được trùng với mật khẩu cũ", HttpStatus.BAD_REQUEST),
     PASSWORD_NOT_MATCH( "PASSWORD_NOT_MATCH", "Mật khẩu mới và xác nhận không khớp", HttpStatus.BAD_REQUEST),
 
+    // File upload
     FILE_IS_EMPTY("FILE_IS_EMPTY", "File không được để trống", HttpStatus.BAD_REQUEST),
-    INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST),
-    FILE_PROCESSING_ERROR("FILE_PROCESSING_ERROR", "Tạo file lỗi",  HttpStatus.BAD_REQUEST );
+    FILE_PROCESSING_ERROR("FILE_PROCESSING_ERROR", "Tạo file lỗi",  HttpStatus.BAD_REQUEST ),
+    FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "Tải ảnh thất bại", HttpStatus.BAD_REQUEST),
+    FILE_INVALID_TYPE("FILE_INVALID_TYPE", "Định dạng ảnh không hợp lệ (chỉ hỗ trợ JPEG, PNG)", HttpStatus.BAD_REQUEST),
+    FILE_TOO_LARGE("FILE_TOO_LARGE", "Ảnh vượt quá dung lượng cho phép (2MB)", HttpStatus.BAD_REQUEST),
 
+    INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST);
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;

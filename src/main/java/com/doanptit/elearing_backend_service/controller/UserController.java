@@ -3,6 +3,7 @@ package com.doanptit.elearing_backend_service.controller;
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
+import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 
@@ -39,6 +41,15 @@ public class UserController {
         UserResponseDto updatedUser = userService.updateProfile(email, request);
 
         return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin cá nhân thành công", updatedUser));
+    }
+
+    @PostMapping("/{userId}/image")
+    public ResponseEntity<ApiResponse<UploadImageResponse>> uploadUserImage(
+            @PathVariable Integer userId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        ApiResponse<UploadImageResponse> response = userService.uploadUserImage(userId, file);
+        return ResponseEntity.ok(response);
     }
 
 }
