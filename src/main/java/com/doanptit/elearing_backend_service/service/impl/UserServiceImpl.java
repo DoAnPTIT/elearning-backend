@@ -1,9 +1,11 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
+import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
+import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.enums.Role;
 import com.doanptit.elearing_backend_service.exception.AppException;
@@ -11,6 +13,7 @@ import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.UserMapper;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
+import com.doanptit.elearing_backend_service.service.S3Service;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -41,6 +45,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final S3Service s3Service;
 
     @Override
     public UserResponseDto createNewUserByAdmin(UserRequestDto request) {
@@ -263,4 +268,27 @@ public class UserServiceImpl implements UserService {
         throw new IllegalArgumentException("Định dạng ngày sinh không hợp lệ: " + dobString);
     }
 
+    @Override
+    @Transactional
+    public ApiResponse<UploadImageResponse> uploadUserImage(Integer userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Xóa ảnh cũ nếu có
+        if (user.getImage() != null && !user.getImage().isEmpty()) {
+            s3Service.deleteUserImage(userId);
+        }
+
+        try {
+            String imageUrl = s3Service.uploadUserImage(userId, file);
+            user.setImage(imageUrl);
+            userRepository.save(user);
+
+            UploadImageResponse response = new UploadImageResponse(imageUrl);
+            return ApiResponse.success("Tải ảnh thành công", response);
+
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.FILE_INVALID_TYPE);
+        }
+    }
 }
