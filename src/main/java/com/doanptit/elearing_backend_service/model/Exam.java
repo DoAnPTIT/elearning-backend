@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.model;
 
+import com.doanptit.elearing_backend_service.enums.ExamType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
@@ -17,17 +18,17 @@ public class Exam extends BaseEntity{
     private Long id;
 
     private String title;
+
     private String description;
-    private Integer examType;
+
+    @Enumerated(EnumType.STRING)
+    private ExamType examType;
+
     private Boolean active = true;
 
-    @ManyToOne
-    @JoinColumn(name = "lesson_id")
-    private Lesson lesson;
-
-    @ManyToOne
-    @JoinColumn(name = "course_id")
-    private Course course;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "section_id")
+    private Section section;
 
     @OneToMany(mappedBy = "exam")
     private List<Question> questions;

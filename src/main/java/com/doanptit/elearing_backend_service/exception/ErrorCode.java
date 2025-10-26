@@ -40,7 +40,10 @@ public enum ErrorCode {
     FILE_INVALID_TYPE("FILE_INVALID_TYPE", "Định dạng ảnh không hợp lệ (chỉ hỗ trợ JPEG, PNG)", HttpStatus.BAD_REQUEST),
     FILE_TOO_LARGE("FILE_TOO_LARGE", "Ảnh vượt quá dung lượng cho phép (2MB)", HttpStatus.BAD_REQUEST),
 
-    INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST);
+    INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST),
+
+    SECTION_NOT_FOUND("SECTION_NOT_FOUND", "Khong tim thay section", HttpStatus.NOT_FOUND),
+    LESSON_NOT_FOUND("LESSON_NOT_FOUND", "Khong tim thay section", HttpStatus.NOT_FOUND);
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;

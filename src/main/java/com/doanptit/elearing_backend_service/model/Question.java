@@ -1,10 +1,8 @@
 package com.doanptit.elearing_backend_service.model;
 
+import com.doanptit.elearing_backend_service.enums.QuestionType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -19,7 +17,9 @@ public class Question extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Integer questionType;
+    @Enumerated(EnumType.STRING)
+    private QuestionType questionType;
+
     private String content;
     private Integer point;
     private Boolean active = true;
