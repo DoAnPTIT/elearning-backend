@@ -64,7 +64,7 @@ CREATE TABLE exams (
                        id SERIAL PRIMARY KEY,
                        title VARCHAR(255) NOT NULL,
                        description VARCHAR(255),
-                       exam_type INT,
+                       exam_type VARCHAR(50),
                        active BOOLEAN DEFAULT TRUE,
                        deleted_on TIMESTAMP NULL,
                        created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -28,7 +28,7 @@ public class Question extends BaseEntity {
     @JoinColumn(name = "exam_id")
     private Exam exam;
 
-    @OneToMany(mappedBy = "question")
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Answer> answers;
 }
 

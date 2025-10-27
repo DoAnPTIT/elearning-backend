@@ -30,7 +30,7 @@ public class Exam extends BaseEntity{
     @JoinColumn(name = "section_id")
     private Section section;
 
-    @OneToMany(mappedBy = "exam")
+    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Question> questions;
 
     @OneToMany(mappedBy = "exam")

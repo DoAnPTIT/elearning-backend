@@ -5,10 +5,10 @@ import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
+import com.doanptit.elearing_backend_service.dto.res.CreateCourseResponse;
+import com.doanptit.elearing_backend_service.dto.res.ExamResponse;
+import com.doanptit.elearing_backend_service.dto.res.LessonResponse;
 import com.doanptit.elearing_backend_service.dto.res.SectionResponse;
-import com.doanptit.elearing_backend_service.model.Course;
-import com.doanptit.elearing_backend_service.model.Exam;
-import com.doanptit.elearing_backend_service.model.Lesson;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +29,10 @@ public class TeacherCourseController {
 
     // Bước 1: Tạo thông tin chung của khóa học
     @PostMapping
-    public ResponseEntity<ApiResponse<Course>> createCourse(
+    public ResponseEntity<ApiResponse<CreateCourseResponse>> createCourse(
             @Valid @RequestBody CreateCourseRequestDto request,
             Authentication authentication) {
-        Course newCourse = courseCreationService.createCourse(request, authentication.getName());
+        CreateCourseResponse newCourse = courseCreationService.createCourse(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newCourse));
     }
 
@@ -58,11 +58,11 @@ public class TeacherCourseController {
 
     // Bước 3: Tạo bài giảng mới trong chương
     @PostMapping("/sections/{sectionId}/lessons")
-    public ResponseEntity<ApiResponse<Lesson>> createLesson(
+    public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
             @PathVariable Long sectionId,
             @Valid @RequestBody CreateLessonRequestDto request,
             Authentication authentication) {
-        Lesson newLesson = courseCreationService.createLesson(sectionId, request, authentication.getName());
+        LessonResponse newLesson = courseCreationService.createLesson(sectionId, request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newLesson));
     }
 
@@ -78,11 +78,11 @@ public class TeacherCourseController {
 
     // Bước 4: Tạo bài kiểm tra trong chương
     @PostMapping("/sections/{sectionId}/exams")
-    public ResponseEntity<ApiResponse<Exam>> createExam(
+    public ResponseEntity<ApiResponse<ExamResponse>> createExam(
             @PathVariable Long sectionId,
             @Valid @RequestBody CreateExamRequestDto request,
             Authentication authentication) {
-        Exam newExam = courseCreationService.createExam(sectionId, request, authentication.getName());
+        ExamResponse newExam = courseCreationService.createExam(sectionId, request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newExam));
     }
 
