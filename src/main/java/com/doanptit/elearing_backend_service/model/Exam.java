@@ -22,6 +22,7 @@ public class Exam extends BaseEntity{
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "exam_type", nullable = false)
     private ExamType examType;
 
     private Boolean active = true;
