@@ -78,7 +78,7 @@ CREATE TABLE exams (
 -- Bảng questions
 CREATE TABLE questions (
                            id SERIAL PRIMARY KEY,
-                           question_type INT,
+                           question_type VARCHAR(50),
                            content VARCHAR(255),
                            point INT,
                            active BOOLEAN DEFAULT TRUE,
