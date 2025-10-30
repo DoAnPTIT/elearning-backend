@@ -4,24 +4,20 @@ import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
-import com.doanptit.elearing_backend_service.dto.res.CreateCourseResponse;
-import com.doanptit.elearing_backend_service.dto.res.ExamResponse;
-import com.doanptit.elearing_backend_service.dto.res.LessonResponse;
-import com.doanptit.elearing_backend_service.dto.res.SectionResponse;
+import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
-import com.doanptit.elearing_backend_service.mapper.CourseMapper;
-import com.doanptit.elearing_backend_service.mapper.ExamMapper;
-import com.doanptit.elearing_backend_service.mapper.LessonMapper;
-import com.doanptit.elearing_backend_service.mapper.SectionMapper;
+import com.doanptit.elearing_backend_service.mapper.*;
 import com.doanptit.elearing_backend_service.model.*;
 import com.doanptit.elearing_backend_service.repository.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.S3Service;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +38,7 @@ public class CourseCreationServiceImpl implements CourseService {
     private final LessonMapper lessonMapper;
     private final ExamMapper examMapper;
     private final CourseMapper courseMapper;
+    private final AdminCourseMapper adminCourseMapper;
 
     @Override
     @Transactional
@@ -210,5 +207,23 @@ public class CourseCreationServiceImpl implements CourseService {
         if (!course.getAuthor().getEmail().equals(teacherEmail)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, Pageable pageable) {
+        Page<Course> coursePage = courseRepository.findByAuthor_Email(teacherEmail, pageable);
+        return coursePage.map(adminCourseMapper::toCourseListDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        checkCourseAuthorship(course, teacherEmail); // (Hàm helper cũ của bạn)
+
+        return adminCourseMapper.toCourseDetailDto(course);
     }
 }

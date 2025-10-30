@@ -5,13 +5,13 @@ import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
-import com.doanptit.elearing_backend_service.dto.res.CreateCourseResponse;
-import com.doanptit.elearing_backend_service.dto.res.ExamResponse;
-import com.doanptit.elearing_backend_service.dto.res.LessonResponse;
-import com.doanptit.elearing_backend_service.dto.res.SectionResponse;
+import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +26,22 @@ import org.springframework.web.multipart.MultipartFile;
 public class TeacherCourseController {
 
     private final CourseService courseCreationService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<AdminCourseListDto>>> getAllMyCourses(
+            Authentication authentication,
+            @PageableDefault(sort = "id") Pageable pageable) {
+        Page<AdminCourseListDto> courses = courseCreationService.getAllCoursesForTeacher(authentication.getName(), pageable);
+        return ResponseEntity.ok(ApiResponse.success(courses));
+    }
+
+    @GetMapping("/{courseId}")
+    public ResponseEntity<ApiResponse<AdminCourseDetailDto>> getMyCourseForEdit(
+            @PathVariable Long courseId,
+            Authentication authentication) {
+        AdminCourseDetailDto courseDetails = courseCreationService.getCourseForEdit(courseId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(courseDetails));
+    }
 
     // Bước 1: Tạo thông tin chung của khóa học
     @PostMapping

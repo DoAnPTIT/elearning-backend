@@ -1,14 +1,17 @@
 package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
+import com.doanptit.elearing_backend_service.dto.req.AdminUpdateCourseStatusDto;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
-import com.doanptit.elearing_backend_service.dto.res.AdminStatisticsDto;
-import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
-import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
+import com.doanptit.elearing_backend_service.dto.res.*;
+import com.doanptit.elearing_backend_service.service.AdminCourseService;
 import com.doanptit.elearing_backend_service.service.AdminStatisticsService;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +25,7 @@ public class AdminController {
 
     private final UserService userService;
     private final AdminStatisticsService adminStatisticsService;
-
+    private final AdminCourseService adminCourseService;
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/users")
@@ -62,6 +65,33 @@ public class AdminController {
         var result = userService.createUsersFromExcel(file, role);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(result));
+    }
+
+    // --- API MỚI: LẤY DANH SÁCH KHÓA HỌC (PHÂN TRANG) ---
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/courses")
+    public ResponseEntity<ApiResponse<Page<AdminCourseListDto>>> getAllCourses(
+            @PageableDefault(sort = "id") Pageable pageable) {
+        Page<AdminCourseListDto> courses = adminCourseService.getAllCourses(pageable);
+        return ResponseEntity.ok(ApiResponse.success(courses));
+    }
+
+    // --- API MỚI: LẤY CHI TIẾT 1 KHÓA HỌC (DATA ĐA DẠNG) ---
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/courses/{id}")
+    public ResponseEntity<ApiResponse<AdminCourseDetailDto>> getCourseDetails(@PathVariable Long id) {
+        AdminCourseDetailDto courseDetails = adminCourseService.getCourseDetails(id);
+        return ResponseEntity.ok(ApiResponse.success(courseDetails));
+    }
+
+    // --- API MỚI: DUYỆT HOẶC TỪ CHỐI KHÓA HỌC ---
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/courses/{id}/status")
+    public ResponseEntity<ApiResponse<AdminCourseDetailDto>> updateCourseStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminUpdateCourseStatusDto request) {
+        AdminCourseDetailDto updatedCourse = adminCourseService.updateCourseStatus(id, request);
+        return ResponseEntity.ok(ApiResponse.success(updatedCourse));
     }
 
 }

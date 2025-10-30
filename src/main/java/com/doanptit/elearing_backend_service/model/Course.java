@@ -48,5 +48,8 @@ public class Course extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
     private User author;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
 }
 

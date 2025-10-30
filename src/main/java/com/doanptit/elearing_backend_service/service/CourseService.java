@@ -4,10 +4,9 @@ import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
-import com.doanptit.elearing_backend_service.dto.res.CreateCourseResponse;
-import com.doanptit.elearing_backend_service.dto.res.ExamResponse;
-import com.doanptit.elearing_backend_service.dto.res.LessonResponse;
-import com.doanptit.elearing_backend_service.dto.res.SectionResponse;
+import com.doanptit.elearing_backend_service.dto.res.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface CourseService {
@@ -31,4 +30,7 @@ public interface CourseService {
 
     // Bước 5: Gửi duyệt
     void submitCourseForReview(Long courseId, String teacherEmail);
+
+    Page<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, Pageable pageable);
+    AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail);
 }
