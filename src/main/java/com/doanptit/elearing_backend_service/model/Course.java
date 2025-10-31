@@ -4,6 +4,7 @@ import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.List;
 
@@ -43,6 +44,7 @@ public class Course extends BaseEntity {
     private CourseCategory category;
 
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<Section> sections;
 
     @ManyToOne(fetch = FetchType.LAZY)

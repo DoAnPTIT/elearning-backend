@@ -1,6 +1,7 @@
 package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
+import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
@@ -28,10 +29,15 @@ public class TeacherCourseController {
     private final CourseService courseCreationService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<AdminCourseListDto>>> getAllMyCourses(
+    public ResponseEntity<ApiResponse<PagedResponse<AdminCourseListDto>>> getAllMyCourses(
             Authentication authentication,
-            @PageableDefault(sort = "id") Pageable pageable) {
-        Page<AdminCourseListDto> courses = courseCreationService.getAllCoursesForTeacher(authentication.getName(), pageable);
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String... sort) {
+
+        PagedResponse<AdminCourseListDto> courses = courseCreationService.getAllCoursesForTeacher(
+                authentication.getName(), page, size, sort);
+
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
 

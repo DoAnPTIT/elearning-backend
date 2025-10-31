@@ -3,6 +3,8 @@ package com.doanptit.elearing_backend_service.model;
 import com.doanptit.elearing_backend_service.enums.ExamType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
+
 import java.util.List;
 
 @Entity
@@ -32,6 +34,7 @@ public class Exam extends BaseEntity{
     private Section section;
 
     @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<Question> questions;
 
     @OneToMany(mappedBy = "exam")

@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
+import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
@@ -14,6 +15,8 @@ import com.doanptit.elearing_backend_service.model.*;
 import com.doanptit.elearing_backend_service.repository.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.S3Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -211,9 +214,45 @@ public class CourseCreationServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, Pageable pageable) {
+    public PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort) {
+
+        // 1. Logic Sort (Phiên bản an toàn, copy từ Admin)
+        List<Sort.Order> orders = new ArrayList<>();
+        if (sort != null && sort.length > 0) {
+            for (String sortOrder : sort) {
+                if (sortOrder == null || sortOrder.trim().isEmpty()) continue;
+                String[] parts = sortOrder.split(",");
+                String field = parts[0].trim();
+                if (field.isEmpty() || field.equalsIgnoreCase("asc") || field.equalsIgnoreCase("desc")) continue;
+
+                if (parts.length == 2 && parts[1] != null && !parts[1].trim().isEmpty()) {
+                    Sort.Direction direction = parts[1].trim().equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+                    orders.add(new Sort.Order(direction, field));
+                } else {
+                    orders.add(new Sort.Order(Sort.Direction.ASC, field));
+                }
+            }
+        }
+        if (orders.isEmpty()) {
+            orders.add(new Sort.Order(Sort.Direction.ASC, "id"));
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orders));
+
+        // 2. Gọi Repository (Không cần filter status)
         Page<Course> coursePage = courseRepository.findByAuthor_Email(teacherEmail, pageable);
-        return coursePage.map(adminCourseMapper::toCourseListDto);
+
+        // 3. Map sang DTO
+        Page<AdminCourseListDto> dtoPage = coursePage.map(adminCourseMapper::toCourseListDto);
+
+        // 4. Chuyển sang PagedResponse
+        return new PagedResponse<>(
+                dtoPage.getContent(),
+                dtoPage.getNumber(),
+                dtoPage.getSize(),
+                dtoPage.getTotalElements(),
+                dtoPage.getTotalPages()
+        );
     }
 
     @Override

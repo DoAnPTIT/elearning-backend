@@ -31,7 +31,7 @@ public class PublicCourseServiceImpl implements PublicCourseService {
     @Override
     @Transactional(readOnly = true)
     public PublicCourseDetailDto getPublicCourseDetails(Long courseId) {
-        Course course = courseRepository.findFullPublicCourseDetailsById(courseId)
+        Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
         return publicCourseMapper.toCourseDetailDto(course);
     }

@@ -1,9 +1,11 @@
 package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
+import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.req.AdminUpdateCourseStatusDto;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
+import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.service.AdminCourseService;
 import com.doanptit.elearing_backend_service.service.AdminStatisticsService;
 import com.doanptit.elearing_backend_service.service.UserService;
@@ -70,9 +72,13 @@ public class AdminController {
     // --- API MỚI: LẤY DANH SÁCH KHÓA HỌC (PHÂN TRANG) ---
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/courses")
-    public ResponseEntity<ApiResponse<Page<AdminCourseListDto>>> getAllCourses(
-            @PageableDefault(sort = "id") Pageable pageable) {
-        Page<AdminCourseListDto> courses = adminCourseService.getAllCourses(pageable);
+    public ResponseEntity<ApiResponse<PagedResponse<AdminCourseListDto>>> getAllCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) CourseStatus status,
+            @RequestParam(defaultValue = "id,asc") String... sort) {
+
+        PagedResponse<AdminCourseListDto> courses = adminCourseService.getAllCourses(page, size, status, sort);
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
 

@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.service;
 
+import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
@@ -31,6 +32,7 @@ public interface CourseService {
     // Bước 5: Gửi duyệt
     void submitCourseForReview(Long courseId, String teacherEmail);
 
-    Page<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, Pageable pageable);
+    PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort);
+
     AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail);
 }
