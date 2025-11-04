@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -63,6 +64,9 @@ public class TeacherCourseController {
     // Bước 1: Tạo thông tin chung của khóa học
     @Operation(summary = "[TEACHER] Bước 1: Tạo thông tin khóa học (Draft)",
             description = "Tạo một khung khóa học mới với trạng thái DRAFT. Yêu cầu quyền TEACHER/ADMIN.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
+    })
     @PostMapping
     public ResponseEntity<ApiResponse<CreateCourseResponse>> createCourse(
             @Valid @RequestBody CreateCourseRequestDto request,
@@ -73,7 +77,7 @@ public class TeacherCourseController {
 
     // Upload ảnh bìa cho khóa học
     @Operation(summary = "[TEACHER] Tải ảnh bìa khóa học", description = "Yêu cầu quyền TEACHER/ADMIN.")
-    @PostMapping("/{courseId}/image")
+    @PostMapping(value = "/{courseId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadCourseImage(
             @Parameter(description = "ID của khóa học", required = true) @PathVariable Long courseId,
             @Parameter(description = "File ảnh bìa", required = true) @RequestParam("file") MultipartFile file,
@@ -84,6 +88,9 @@ public class TeacherCourseController {
 
     // Bước 2: Tạo chương mới cho khóa học
     @Operation(summary = "[TEACHER] Bước 2: Tạo chương mới", description = "Thêm một chương mới vào khóa học nháp. Yêu cầu quyền TEACHER/ADMIN.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
+    })
     @PostMapping("/{courseId}/sections")
     public ResponseEntity<ApiResponse<SectionResponse>> createSection(
             @Parameter(description = "ID của khóa học", required = true) @PathVariable Long courseId,
@@ -95,6 +102,9 @@ public class TeacherCourseController {
 
     // Bước 3: Tạo bài giảng mới trong chương
     @Operation(summary = "[TEACHER] Bước 3: Tạo bài giảng mới", description = "Thêm một bài giảng (Video/Article) vào một chương. Yêu cầu quyền TEACHER/ADMIN.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
+    })
     @PostMapping("/sections/{sectionId}/lessons")
     public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
             @Parameter(description = "ID của chương", required = true) @PathVariable Long sectionId,
@@ -106,7 +116,7 @@ public class TeacherCourseController {
 
     // Bước 4: Upload video cho bài giảng
     @Operation(summary = "[TEACHER] Tải video bài giảng", description = "Tải file video cho một bài giảng (loại VIDEO). Yêu cầu quyền TEACHER/ADMIN.")
-    @PostMapping("/lessons/upload/{lessonId}/video")
+    @PostMapping(value = "/lessons/upload/{lessonId}/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadLessonVideo(
             @Parameter(description = "ID của bài giảng", required = true) @PathVariable Long lessonId,
             @Parameter(description = "File video", required = true) @RequestParam("file") MultipartFile file,
@@ -117,6 +127,9 @@ public class TeacherCourseController {
 
     // Bước 4: Tạo bài kiểm tra trong chương
     @Operation(summary = "[TEACHER] Bước 4: Tạo bài kiểm tra", description = "Thêm một bài kiểm tra (lồng câu hỏi/câu trả lời) vào một chương. Yêu cầu quyền TEACHER/ADMIN.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
+    })
     @PostMapping("/sections/{sectionId}/exams")
     public ResponseEntity<ApiResponse<ExamResponse>> createExam(
             @Parameter(description = "ID của chương", required = true) @PathVariable Long sectionId,

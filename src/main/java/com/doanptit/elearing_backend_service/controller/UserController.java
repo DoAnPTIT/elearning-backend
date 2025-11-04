@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -60,7 +61,7 @@ public class UserController {
 
     @Operation(summary = "Tải lên ảnh đại diện",
             description = "Tải lên ảnh đại diện (avatar) cho người dùng.")
-    @PostMapping("/{userId}/image")
+    @PostMapping(value = "/{userId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<UploadImageResponse>> uploadUserImage(
             @Parameter(description = "ID của người dùng", required = true) @PathVariable Integer userId,
             @Parameter(description = "File ảnh", required = true) @RequestParam("file") MultipartFile file

@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType; // <-- THÊM IMPORT NÀY
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -60,9 +61,9 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<?>> getAllUsers(
-            @Parameter(description = "Số trang (bắt đầu từ 0)", example = "0") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Kích thước trang", example = "10") @RequestParam(defaultValue = "10") int size,
-            @Parameter(description = "Sắp xếp (ví dụ: firstname,desc)", example = "id,asc") @RequestParam(defaultValue = "id,asc") String[] sort) {
+                                                       @Parameter(description = "Số trang (bắt đầu từ 0)", example = "0") @RequestParam(defaultValue = "0") int page,
+                                                       @Parameter(description = "Kích thước trang", example = "10") @RequestParam(defaultValue = "10") int size,
+                                                       @Parameter(description = "Sắp xếp (ví dụ: firstname,desc)", example = "id,asc") @RequestParam(defaultValue = "id,asc") String[] sort) {
         return ResponseEntity.ok(ApiResponse.success(userService.findAllUsers(page, size, sort)));
     }
 
@@ -75,8 +76,11 @@ public class AdminController {
     }
 
     @Operation(summary = "[ADMIN] Tạo người dùng hàng loạt từ Excel", description = "Tải lên file Excel (.xlsx) để tạo hàng loạt người dùng. Yêu cầu quyền ADMIN.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
+    })
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/users/batch-create")
+    @PostMapping(value = "/users/batch-create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<BatchCreationResult>> createUsersFromExcel(
             @Parameter(description = "File Excel chứa danh sách người dùng", required = true) @RequestParam("file") MultipartFile file,
             @Parameter(description = "Role gán cho tất cả user (STUDENT hoặc TEACHER)", required = true) @RequestParam("role") String role) {
@@ -137,4 +141,5 @@ public class AdminController {
         AdminCourseDetailDto updatedCourse = adminCourseService.updateCourseStatus(id, request);
         return ResponseEntity.ok(ApiResponse.success(updatedCourse));
     }
+
 }
