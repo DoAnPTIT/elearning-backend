@@ -40,7 +40,17 @@ public enum ErrorCode {
     FILE_INVALID_TYPE("FILE_INVALID_TYPE", "Định dạng ảnh không hợp lệ (chỉ hỗ trợ JPEG, PNG)", HttpStatus.BAD_REQUEST),
     FILE_TOO_LARGE("FILE_TOO_LARGE", "Ảnh vượt quá dung lượng cho phép (2MB)", HttpStatus.BAD_REQUEST),
 
-    INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST);
+    INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST),
+
+    SECTION_NOT_FOUND("SECTION_NOT_FOUND", "Khong tim thay section", HttpStatus.NOT_FOUND),
+    LESSON_NOT_FOUND("LESSON_NOT_FOUND", "Khong tim thay section", HttpStatus.NOT_FOUND),
+
+    // Submit course
+    LESSON_NOT_VIDEO_TYPE("LESSON_NOT_VIDEO_TYPE", "Loại bài giảng không phải là video", HttpStatus.BAD_REQUEST),
+    INVALID_COURSE_STATUS_FOR_REVIEW("INVALID_COURSE_STATUS_FOR_REVIEW", "Trạng thái khóa học không hợp lệ để gửi duyệt", HttpStatus.BAD_REQUEST),
+    COURSE_MISSING_COVER_IMAGE("COURSE_MISSING_COVER_IMAGE", "Khóa học phải có ảnh bìa để gửi duyệt", HttpStatus.BAD_REQUEST),
+    COURSE_IS_EMPTY("COURSE_IS_EMPTY", "Khóa học phải có ít nhất một bài giảng hoặc bài kiểm tra", HttpStatus.BAD_REQUEST);
+
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;

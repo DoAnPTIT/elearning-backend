@@ -1,7 +1,10 @@
 package com.doanptit.elearing_backend_service.model;
 
+import com.doanptit.elearing_backend_service.enums.ExamType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
+
 import java.util.List;
 
 @Entity
@@ -17,19 +20,21 @@ public class Exam extends BaseEntity{
     private Long id;
 
     private String title;
+
     private String description;
-    private Integer examType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "exam_type", nullable = false)
+    private ExamType examType;
+
     private Boolean active = true;
 
-    @ManyToOne
-    @JoinColumn(name = "lesson_id")
-    private Lesson lesson;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "section_id")
+    private Section section;
 
-    @ManyToOne
-    @JoinColumn(name = "course_id")
-    private Course course;
-
-    @OneToMany(mappedBy = "exam")
+    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<Question> questions;
 
     @OneToMany(mappedBy = "exam")

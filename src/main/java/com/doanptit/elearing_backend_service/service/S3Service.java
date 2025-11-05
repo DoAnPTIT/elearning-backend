@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
@@ -14,6 +15,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URLConnection;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +28,47 @@ public class S3Service {
 
     @Value("${app.aws.s3.endpoint}")
     private String s3Endpoint;
+
+    /**
+     * PHƯƠNG THỨC MỚI: Upload file chung (video, ảnh bìa khóa học, tài liệu...)
+     *
+     * @param file File được upload
+     * @param path Thư mục trên S3 (ví dụ: "course-images", "lesson-videos")
+     * @return URL đầy đủ của file đã upload
+     */
+    public String uploadFile(MultipartFile file, String path) {
+        if (file.isEmpty()) {
+            throw new AppException(ErrorCode.FILE_IS_EMPTY);
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+
+        // Tạo key duy nhất ngẫu nhiên cho file
+        String key = path + "/" + UUID.randomUUID() + fileExtension;
+
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(file.getContentType())
+                .build();
+
+        try {
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
+
+            // Trả về URL đầy đủ để truy cập file
+            // Với LocalStack, URL thường là endpoint/bucketName/key
+            return s3Endpoint + "/" + bucketName + "/" + key;
+
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
+        } catch (S3Exception e) {
+            throw new AppException(ErrorCode.FILE_PROCESSING_ERROR);
+        }
+    }
 
     public String uploadUserImage(Integer userId, MultipartFile file) {
         validateImage(file);

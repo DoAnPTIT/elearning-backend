@@ -6,8 +6,10 @@ import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.service.UserService;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -25,9 +27,10 @@ public class UserController {
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('TEACHER')")
     @PatchMapping("/{id}/change-password")
-    public ResponseEntity<ApiResponse<String>> changePassword(@PathVariable Integer id,
-                                                              @RequestBody @Valid ChangePasswordRequest request,
-                                                              Principal principal) {
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @Parameter(description = "ID của người dùng", required = true) @PathVariable Integer id,
+            @RequestBody @Valid ChangePasswordRequest request,
+            Principal principal) {
         userService.changePassword(id, principal.getName(), request);
         return ResponseEntity.ok(ApiResponse.success("Đã thay đổi mật khẩu thành công"));
     }
@@ -43,13 +46,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin cá nhân thành công", updatedUser));
     }
 
-    @PostMapping("/{userId}/image")
+    @PostMapping(value = "/{userId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<UploadImageResponse>> uploadUserImage(
-            @PathVariable Integer userId,
-            @RequestParam("file") MultipartFile file
+            @Parameter(description = "ID của người dùng", required = true) @PathVariable Integer userId,
+            @Parameter(description = "File ảnh", required = true) @RequestParam("file") MultipartFile file
     ) {
         ApiResponse<UploadImageResponse> response = userService.uploadUserImage(userId, file);
         return ResponseEntity.ok(response);
     }
-
 }

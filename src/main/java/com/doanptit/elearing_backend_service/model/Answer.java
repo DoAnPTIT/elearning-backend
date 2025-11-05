@@ -18,7 +18,6 @@ public class Answer  {
     private String content;
     private Boolean isCorrect = false;
 
-    // Quan hệ
     @ManyToOne
     @JoinColumn(name = "question_id")
     private Question question;
