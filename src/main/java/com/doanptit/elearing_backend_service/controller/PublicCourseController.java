@@ -4,6 +4,7 @@ import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.res.PublicCourseDetailDto;
 import com.doanptit.elearing_backend_service.dto.res.PublicCourseListDto;
 import com.doanptit.elearing_backend_service.service.PublicCourseService;
+import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +30,8 @@ public class PublicCourseController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PublicCourseDetailDto>> getPublicCourseDetails(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PublicCourseDetailDto>> getPublicCourseDetails(
+            @Parameter(description = "ID của khóa học cần xem", required = true) @PathVariable Long id) {
         PublicCourseDetailDto courseDetails = publicCourseService.getPublicCourseDetails(id);
         return ResponseEntity.ok(ApiResponse.success(courseDetails));
     }
