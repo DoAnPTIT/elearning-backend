@@ -1,0 +1,1782 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+  - url: 'http://localhost:8080'
+    description: Generated server url
+tags:
+  - name: 4. Teacher - Course Creation
+    description: 'Các API cho phép Teacher tạo và quản lý khóa học (lưu nháp, gửi duyệt)'
+  - name: 1. Admin Management
+    description: Các API cho phép Admin quản lý toàn bộ hệ thống
+  - name: 3. Public Courses
+    description: Các API public cho phép mọi người xem khóa học (Không cần xác thực)
+  - name: 2. Authentication
+    description: 'Các API về Đăng nhập, Đăng xuất, Quên mật khẩu'
+  - name: 5. User Actions (Profile)
+    description: 'Các API cho phép người dùng tự quản lý (đổi mật khẩu, profile)'
+paths:
+  /api/users/edit-profile:
+    put:
+      tags:
+        - 5. User Actions (Profile)
+      summary: Cập nhật thông tin cá nhân
+      description: 'Người dùng tự cập nhật thông tin (tên, ngày sinh...). Yêu cầu xác thực.'
+      operationId: updateProfile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserResponseDto'
+  '/api/users/{userId}/image':
+    post:
+      tags:
+        - 5. User Actions (Profile)
+      summary: Tải lên ảnh đại diện
+      description: Tải lên ảnh đại diện (avatar) cho người dùng.
+      operationId: uploadUserImage
+      parameters:
+        - name: userId
+          in: path
+          description: ID của người dùng
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  description: File ảnh
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseUploadImageResponse'
+  /api/teacher/courses:
+    get:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Lấy danh sách khóa học của tôi'
+      description: >-
+        Lấy danh sách (phân trang) các khóa học do chính Teacher đang đăng nhập
+        sở hữu. Yêu cầu quyền TEACHER/ADMIN.
+      operationId: getAllMyCourses
+      parameters:
+        - name: page
+          in: query
+          description: Số trang (bắt đầu từ 0)
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          example: 0
+        - name: size
+          in: query
+          description: Kích thước trang
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+          example: 10
+        - name: sort
+          in: query
+          description: 'Sắp xếp (ví dụ: title,desc)'
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - id
+              - asc
+          example: 'id,asc'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: >-
+                  #/components/schemas/ApiResponsePagedResponseAdminCourseListDto
+    post:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Bước 1: Tạo thông tin khóa học (Draft)'
+      description: >-
+        Tạo một khung khóa học mới với trạng thái DRAFT. Yêu cầu quyền
+        TEACHER/ADMIN.
+      operationId: createCourse
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseRequestDto'
+        required: true
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseCreateCourseResponse'
+  '/api/teacher/courses/{courseId}/sections':
+    post:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Bước 2: Tạo chương mới'
+      description: Thêm một chương mới vào khóa học nháp. Yêu cầu quyền TEACHER/ADMIN.
+      operationId: createSection
+      parameters:
+        - name: courseId
+          in: path
+          description: ID của khóa học
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSectionRequestDto'
+        required: true
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseSectionResponse'
+  '/api/teacher/courses/{courseId}/image':
+    post:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Tải ảnh bìa khóa học'
+      description: Yêu cầu quyền TEACHER/ADMIN.
+      operationId: uploadCourseImage
+      parameters:
+        - name: courseId
+          in: path
+          description: ID của khóa học
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  description: File ảnh bìa
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+  '/api/teacher/courses/sections/{sectionId}/lessons':
+    post:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Bước 3: Tạo bài giảng mới'
+      description: >-
+        Thêm một bài giảng (Video/Article) vào một chương. Yêu cầu quyền
+        TEACHER/ADMIN.
+      operationId: createLesson
+      parameters:
+        - name: sectionId
+          in: path
+          description: ID của chương
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLessonRequestDto'
+        required: true
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseLessonResponse'
+  '/api/teacher/courses/sections/{sectionId}/exams':
+    post:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Bước 4: Tạo bài kiểm tra'
+      description: >-
+        Thêm một bài kiểm tra (lồng câu hỏi/câu trả lời) vào một chương. Yêu cầu
+        quyền TEACHER/ADMIN.
+      operationId: createExam
+      parameters:
+        - name: sectionId
+          in: path
+          description: ID của chương
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExamRequestDto'
+        required: true
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseExamResponse'
+  '/api/teacher/courses/lessons/upload/{lessonId}/video':
+    post:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Tải video bài giảng'
+      description: >-
+        Tải file video cho một bài giảng (loại VIDEO). Yêu cầu quyền
+        TEACHER/ADMIN.
+      operationId: uploadLessonVideo
+      parameters:
+        - name: lessonId
+          in: path
+          description: ID của bài giảng
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  description: File video
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+  /api/auth/reset-password:
+    post:
+      tags:
+        - 2. Authentication
+      summary: Đặt lại mật khẩu
+      description: Đặt lại mật khẩu mới bằng token đã nhận từ email.
+      operationId: resetPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+        required: true
+      responses:
+        '200':
+          description: Reset mật khẩu thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+        '400':
+          description: Token không hợp lệ hoặc mật khẩu mới không khớp
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+  /api/auth/logout:
+    post:
+      tags:
+        - 2. Authentication
+      summary: Đăng xuất
+      description: >-
+        Vô hiệu hóa JWT token hiện tại của người dùng (thêm token vào
+        blacklist).
+      operationId: logout
+      responses:
+        '200':
+          description: Đăng xuất thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+        '401':
+          description: Token không hợp lệ hoặc bị thiếu
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+  /api/auth/login:
+    post:
+      tags:
+        - 2. Authentication
+      summary: Đăng nhập
+      description: Xác thực người dùng và trả về JWT token.
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: 'Đăng nhập thành công, trả về token'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseLoginResponse'
+        '401':
+          description: Sai email hoặc mật khẩu
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseLoginResponse'
+  /api/auth/forgot-password:
+    post:
+      tags:
+        - 2. Authentication
+      summary: Quên mật khẩu
+      description: Gửi yêu cầu (token) reset mật khẩu về email của người dùng.
+      operationId: forgotPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+        required: true
+      responses:
+        '200':
+          description: Gửi email thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+        '404':
+          description: Không tìm thấy email
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+  /api/admin/users:
+    get:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Lấy danh sách người dùng (Phân trang, Sắp xếp)'
+      description: >-
+        Lấy danh sách tất cả người dùng, hỗ trợ phân trang và sắp xếp. Yêu cầu
+        quyền ADMIN.
+      operationId: getAllUsers
+      parameters:
+        - name: page
+          in: query
+          description: Số trang (bắt đầu từ 0)
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          example: 0
+        - name: size
+          in: query
+          description: Kích thước trang
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+          example: 10
+        - name: sort
+          in: query
+          description: 'Sắp xếp (ví dụ: firstname,desc)'
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - id
+              - asc
+          example: 'id,asc'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    post:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Tạo người dùng mới'
+      description: Tạo một người dùng mới (STUDENT hoặc TEACHER). Yêu cầu quyền ADMIN.
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequestDto'
+        required: true
+      responses:
+        '201':
+          description: Tạo người dùng thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserResponseDto'
+        '400':
+          description: 'Dữ liệu không hợp lệ (ví dụ: email trùng)'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserResponseDto'
+  /api/admin/users/batch-create:
+    post:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Tạo người dùng hàng loạt từ Excel'
+      description: >-
+        Tải lên file Excel (.xlsx) để tạo hàng loạt người dùng. Yêu cầu quyền
+        ADMIN.
+      operationId: createUsersFromExcel
+      parameters:
+        - name: role
+          in: query
+          description: Role gán cho tất cả user (STUDENT hoặc TEACHER)
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+              type: object
+              properties:
+                file:
+                  type: string
+                  description: File Excel chứa danh sách người dùng
+                  format: binary
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseBatchCreationResult'
+  '/api/users/{id}/change-password':
+    patch:
+      tags:
+        - 5. User Actions (Profile)
+      summary: Đổi mật khẩu
+      description: >-
+        Người dùng tự đổi mật khẩu của mình (yêu cầu mật khẩu cũ và mới). Yêu
+        cầu xác thực (USER/ADMIN/TEACHER).
+      operationId: changePassword
+      parameters:
+        - name: id
+          in: path
+          description: ID của người dùng
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
+      responses:
+        '200':
+          description: Đổi mật khẩu thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+        '400':
+          description: Mật khẩu cũ không chính xác hoặc mật khẩu mới không khớp
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+        '403':
+          description: Không có quyền đổi mật khẩu cho user này
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+  '/api/teacher/courses/{courseId}/submit-review':
+    patch:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Bước 5: Gửi khóa học đi duyệt'
+      description: >-
+        Thay đổi trạng thái khóa học từ DRAFT/REJECTED sang PENDING_APPROVAL.
+        Yêu cầu quyền TEACHER/ADMIN.
+      operationId: submitCourseForReview
+      parameters:
+        - name: courseId
+          in: path
+          description: ID của khóa học
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Gửi duyệt thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+        '400':
+          description: 'Khóa học không đủ điều kiện (ví dụ: thiếu ảnh bìa, thiếu bài giảng)'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseString'
+  '/api/admin/courses/{id}/status':
+    patch:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Phê duyệt hoặc Từ chối khóa học'
+      description: >-
+        Thay đổi trạng thái của một khóa học (thường là từ PENDING_APPROVAL sang
+        APPROVED hoặc REJECTED). Yêu cầu quyền ADMIN.
+      operationId: updateCourseStatus
+      parameters:
+        - name: id
+          in: path
+          description: ID của khóa học cần cập nhật
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateCourseStatusDto'
+        required: true
+      responses:
+        '200':
+          description: 'Cập nhật thành công, trả về khóa học đã cập nhật'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+        '400':
+          description: 'Trạng thái không hợp lệ (ví dụ: khóa học đang ở DRAFT)'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+        '404':
+          description: Không tìm thấy khóa học
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+  '/api/teacher/courses/{courseId}':
+    get:
+      tags:
+        - 4. Teacher - Course Creation
+      summary: '[TEACHER] Lấy chi tiết khóa học để sửa (Load nháp)'
+      description: >-
+        Lấy toàn bộ cây thông tin lồng nhau (Section, Lesson, Exam...) của một
+        khóa học để Teacher tiếp tục chỉnh sửa. Yêu cầu quyền TEACHER/ADMIN.
+      operationId: getMyCourseForEdit
+      parameters:
+        - name: courseId
+          in: path
+          description: ID của khóa học cần sửa
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+        '403':
+          description: Không có quyền (không phải chủ khóa học)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+        '404':
+          description: Không tìm thấy khóa học
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+  /api/public/courses:
+    get:
+      tags:
+        - 3. Public Courses
+      summary: '[PUBLIC] Lấy danh sách khóa học (Trang chủ)'
+      description: >-
+        Lấy danh sách các khóa học đã được 'APPROVED' (phê duyệt), có phân
+        trang. (API này nên được sửa để trả về PagedResponse)
+      operationId: getAllPublicCourses
+      parameters:
+        - name: pageable
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Pageable'
+      responses:
+        '200':
+          description: 'Thành công, trả về danh sách khóa học'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagePublicCourseListDto'
+  '/api/public/courses/{id}':
+    get:
+      tags:
+        - 3. Public Courses
+      summary: '[PUBLIC] Lấy chi tiết 1 khóa học (để xem)'
+      description: >-
+        Lấy thông tin chi tiết của 1 khóa học đã được 'APPROVED'. Chỉ trả về
+        thông tin công khai (tiêu đề bài giảng), không bao gồm nội dung.
+      operationId: getPublicCourseDetails
+      parameters:
+        - name: id
+          in: path
+          description: ID của khóa học cần xem
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 'Thành công, trả về chi tiết khóa học'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponsePublicCourseDetailDto'
+        '404':
+          description: Không tìm thấy khóa học (hoặc khóa học chưa được duyệt)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponsePublicCourseDetailDto'
+  '/api/admin/users/{id}':
+    get:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Lấy thông tin người dùng bằng ID'
+      description: Yêu cầu quyền ADMIN.
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          description: ID của người dùng cần xem
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserResponseDto'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserResponseDto'
+  /api/admin/statistics:
+    get:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Lấy thống kê hệ thống'
+      description: 'Lấy số lượng tổng user, teacher, và student. Yêu cầu quyền ADMIN.'
+      operationId: getStatisticsQuantityByRole
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminStatisticsDto'
+  /api/admin/courses:
+    get:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Lấy danh sách khóa học (Phân trang, Lọc, Sắp xếp)'
+      description: >-
+        Lấy danh sách tất cả khóa học, hỗ trợ lọc theo 'status' và sắp xếp. Yêu
+        cầu quyền ADMIN.
+      operationId: getAllCourses
+      parameters:
+        - name: page
+          in: query
+          description: Số trang (bắt đầu từ 0)
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          example: 0
+        - name: size
+          in: query
+          description: Kích thước trang
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+          example: 10
+        - name: status
+          in: query
+          description: 'Lọc theo trạng thái (DRAFT, PENDING_APPROVAL, APPROVED, REJECTED)'
+          required: false
+          schema:
+            type: string
+            enum:
+              - DRAFT
+              - PENDING_APPROVAL
+              - ACTIVE
+              - REJECTED
+              - ARCHIVED
+          example: DRAFT
+        - name: sort
+          in: query
+          description: 'Sắp xếp (ví dụ: title,desc)'
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default:
+              - id
+              - asc
+          example: 'id,asc'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            '*/*':
+              schema:
+                $ref: >-
+                  #/components/schemas/ApiResponsePagedResponseAdminCourseListDto
+        '401':
+          description: Chưa xác thực
+          content:
+            '*/*':
+              schema:
+                $ref: >-
+                  #/components/schemas/ApiResponsePagedResponseAdminCourseListDto
+        '403':
+          description: Không có quyền (không phải Admin)
+          content:
+            '*/*':
+              schema:
+                $ref: >-
+                  #/components/schemas/ApiResponsePagedResponseAdminCourseListDto
+  '/api/admin/courses/{id}':
+    get:
+      tags:
+        - 1. Admin Management
+      summary: '[ADMIN] Lấy chi tiết 1 khóa học'
+      description: >-
+        Lấy toàn bộ cây thông tin lồng nhau của một khóa học. Yêu cầu quyền
+        ADMIN.
+      operationId: getCourseDetails
+      parameters:
+        - name: id
+          in: path
+          description: ID của khóa học cần xem
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+        '404':
+          description: Không tìm thấy khóa học
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ApiResponseAdminCourseDetailDto'
+components:
+  schemas:
+    UpdateProfileRequest:
+      required:
+        - firstname
+      type: object
+      properties:
+        firstname:
+          maxLength: 20
+          minLength: 0
+          type: string
+        lastname:
+          type: string
+        image:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+    ApiResponseUserResponseDto:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/UserResponseDto'
+    UserResponseDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        email:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - TEACHER
+            - STUDENT
+        image:
+          type: string
+        active:
+          type: boolean
+    ApiResponseUploadImageResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/UploadImageResponse'
+    UploadImageResponse:
+      type: object
+      properties:
+        imageUrl:
+          type: string
+    CreateCourseRequestDto:
+      required:
+        - category
+        - title
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        objectives:
+          type: string
+        category:
+          type: string
+          enum:
+            - COMPUTER_SCIENCE
+            - MATHEMATICS
+            - PHYSICS
+            - BUSINESS_ADMINISTRATION
+            - LITERATURE
+        target_audience:
+          type: string
+    ApiResponseCreateCourseResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/CreateCourseResponse'
+    CreateCourseResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        objectives:
+          type: string
+        targetAudience:
+          type: string
+        category:
+          type: string
+          enum:
+            - COMPUTER_SCIENCE
+            - MATHEMATICS
+            - PHYSICS
+            - BUSINESS_ADMINISTRATION
+            - LITERATURE
+    CreateSectionRequestDto:
+      required:
+        - title
+      type: object
+      properties:
+        title:
+          type: string
+        section_order:
+          type: integer
+          format: int32
+    ApiResponseSectionResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/SectionResponse'
+    SectionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        order:
+          type: integer
+          format: int32
+    ApiResponseString:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          type: string
+    CreateLessonRequestDto:
+      required:
+        - lesson_type
+        - title
+      type: object
+      properties:
+        title:
+          type: string
+        lesson_type:
+          type: string
+          enum:
+            - VIDEO
+            - ARTICLE
+        article_content:
+          type: string
+        lesson_order:
+          type: integer
+          format: int32
+    ApiResponseLessonResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/LessonResponse'
+    LessonResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        lessonType:
+          type: string
+          enum:
+            - VIDEO
+            - ARTICLE
+        articleContent:
+          type: string
+        videoUrl:
+          type: string
+        order:
+          type: integer
+          format: int32
+    CreateAnswerRequestDto:
+      required:
+        - content
+      type: object
+      properties:
+        content:
+          type: string
+        isCorrect:
+          type: boolean
+    CreateExamRequestDto:
+      required:
+        - exam_type
+        - title
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateQuestionRequestDto'
+        exam_type:
+          type: string
+          enum:
+            - QUIZ
+            - ASSIGNMENT
+            - FINAL_EXAM
+    CreateQuestionRequestDto:
+      required:
+        - content
+        - question_type
+      type: object
+      properties:
+        content:
+          type: string
+        point:
+          type: integer
+          format: int32
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateAnswerRequestDto'
+        question_type:
+          type: string
+          enum:
+            - SINGLE_CHOICE
+            - MULTIPLE_CHOICE
+            - ESSAY
+    AnswerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        content:
+          type: string
+        isCorrect:
+          type: boolean
+    ApiResponseExamResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/ExamResponse'
+    ExamResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        examType:
+          type: string
+          enum:
+            - QUIZ
+            - ASSIGNMENT
+            - FINAL_EXAM
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionResponse'
+    QuestionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        content:
+          type: string
+        questionType:
+          type: string
+          enum:
+            - SINGLE_CHOICE
+            - MULTIPLE_CHOICE
+            - ESSAY
+        point:
+          type: integer
+          format: int32
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerResponse'
+    ResetPasswordRequest:
+      required:
+        - confirm_password
+        - new_password
+        - token
+      type: object
+      properties:
+        token:
+          type: string
+        new_password:
+          maxLength: 2147483647
+          minLength: 8
+          type: string
+        confirm_password:
+          type: string
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    ApiResponseLoginResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/LoginResponse'
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserSummaryDto'
+    UserSummaryDto:
+      type: object
+      properties:
+        email:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - TEACHER
+            - STUDENT
+    ForgotPasswordRequest:
+      required:
+        - email
+      type: object
+      properties:
+        email:
+          type: string
+    UserRequestDto:
+      required:
+        - email
+        - firstname
+        - password
+        - role
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          maxLength: 2147483647
+          minLength: 8
+          type: string
+        firstname:
+          maxLength: 20
+          minLength: 0
+          type: string
+        lastname:
+          type: string
+        role:
+          type: string
+        image:
+          type: string
+        active:
+          type: boolean
+        date_of_birth:
+          type: string
+          format: date
+    ApiResponseBatchCreationResult:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/BatchCreationResult'
+    BatchCreationResult:
+      type: object
+      properties:
+        successCount:
+          type: integer
+          format: int32
+        failureCount:
+          type: integer
+          format: int32
+        errorMessages:
+          type: array
+          items:
+            type: string
+    ChangePasswordRequest:
+      required:
+        - newPassword
+        - oldPassword
+      type: object
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+    AdminUpdateCourseStatusDto:
+      required:
+        - status
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - PENDING_APPROVAL
+            - ACTIVE
+            - REJECTED
+            - ARCHIVED
+        rejection_reason:
+          type: string
+    AdminAnswerDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        content:
+          type: string
+        isCorrect:
+          type: boolean
+    AdminAuthorDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+    AdminCourseDetailDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - PENDING_APPROVAL
+            - ACTIVE
+            - REJECTED
+            - ARCHIVED
+        image:
+          type: string
+        objectives:
+          type: string
+        targetAudience:
+          type: string
+        category:
+          type: string
+          enum:
+            - COMPUTER_SCIENCE
+            - MATHEMATICS
+            - PHYSICS
+            - BUSINESS_ADMINISTRATION
+            - LITERATURE
+        author:
+          $ref: '#/components/schemas/AdminAuthorDto'
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminSectionDto'
+    AdminExamDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        examType:
+          type: string
+          enum:
+            - QUIZ
+            - ASSIGNMENT
+            - FINAL_EXAM
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminQuestionDto'
+    AdminLessonDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        lessonType:
+          type: string
+          enum:
+            - VIDEO
+            - ARTICLE
+        videoUrl:
+          type: string
+        duration:
+          type: integer
+          format: int64
+        articleContent:
+          type: string
+        order:
+          type: integer
+          format: int32
+    AdminQuestionDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        questionType:
+          type: string
+          enum:
+            - SINGLE_CHOICE
+            - MULTIPLE_CHOICE
+            - ESSAY
+        content:
+          type: string
+        point:
+          type: integer
+          format: int32
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAnswerDto'
+    AdminSectionDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        order:
+          type: integer
+          format: int32
+        lessons:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminLessonDto'
+        exams:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminExamDto'
+    ApiResponseAdminCourseDetailDto:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/AdminCourseDetailDto'
+    AdminCourseListDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        status:
+          type: string
+          enum:
+            - DRAFT
+            - PENDING_APPROVAL
+            - ACTIVE
+            - REJECTED
+            - ARCHIVED
+        category:
+          type: string
+          enum:
+            - COMPUTER_SCIENCE
+            - MATHEMATICS
+            - PHYSICS
+            - BUSINESS_ADMINISTRATION
+            - LITERATURE
+        author:
+          $ref: '#/components/schemas/AdminAuthorDto'
+        sectionCount:
+          type: integer
+          format: int32
+    ApiResponsePagedResponseAdminCourseListDto:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/PagedResponseAdminCourseListDto'
+    PagedResponseAdminCourseListDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminCourseListDto'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    Pageable:
+      type: object
+      properties:
+        page:
+          minimum: 0
+          type: integer
+          format: int32
+        size:
+          minimum: 1
+          type: integer
+          format: int32
+        sort:
+          type: array
+          items:
+            type: string
+    ApiResponsePagePublicCourseListDto:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/PagePublicCourseListDto'
+    PagePublicCourseListDto:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        first:
+          type: boolean
+        last:
+          type: boolean
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicCourseListDto'
+        number:
+          type: integer
+          format: int32
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortObject'
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/PageableObject'
+        empty:
+          type: boolean
+    PageableObject:
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int64
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortObject'
+        paged:
+          type: boolean
+        pageSize:
+          type: integer
+          format: int32
+        pageNumber:
+          type: integer
+          format: int32
+        unpaged:
+          type: boolean
+    PublicAuthorDto:
+      type: object
+      properties:
+        firstname:
+          type: string
+        lastname:
+          type: string
+        image:
+          type: string
+    PublicCourseListDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        image:
+          type: string
+        category:
+          type: string
+          enum:
+            - COMPUTER_SCIENCE
+            - MATHEMATICS
+            - PHYSICS
+            - BUSINESS_ADMINISTRATION
+            - LITERATURE
+        author:
+          $ref: '#/components/schemas/PublicAuthorDto'
+    SortObject:
+      type: object
+      properties:
+        direction:
+          type: string
+        nullHandling:
+          type: string
+        ascending:
+          type: boolean
+        property:
+          type: string
+        ignoreCase:
+          type: boolean
+    ApiResponsePublicCourseDetailDto:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/PublicCourseDetailDto'
+    PublicCourseDetailDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+        objectives:
+          type: string
+        targetAudience:
+          type: string
+        category:
+          type: string
+          enum:
+            - COMPUTER_SCIENCE
+            - MATHEMATICS
+            - PHYSICS
+            - BUSINESS_ADMINISTRATION
+            - LITERATURE
+        author:
+          $ref: '#/components/schemas/PublicAuthorDto'
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicSectionDto'
+    PublicLessonDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        duration:
+          type: integer
+          format: int64
+        order:
+          type: integer
+          format: int32
+        lessonType:
+          type: string
+          enum:
+            - VIDEO
+            - ARTICLE
+    PublicSectionDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        order:
+          type: integer
+          format: int32
+        lessons:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicLessonDto'
+    ApiResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          type: object
+    AdminStatisticsDto:
+      type: object
+      properties:
+        total-students:
+          type: integer
+          format: int32
+        total-teachers:
+          type: integer
+          format: int32
+        total-courses:
+          type: integer
+          format: int32
+    ApiResponseAdminStatisticsDto:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        errorCode:
+          type: string
+        data:
+          $ref: '#/components/schemas/AdminStatisticsDto'
