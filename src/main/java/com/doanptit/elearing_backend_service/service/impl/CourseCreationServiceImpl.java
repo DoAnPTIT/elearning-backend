@@ -1,27 +1,26 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
+import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
-import com.doanptit.elearing_backend_service.dto.res.CreateCourseResponse;
-import com.doanptit.elearing_backend_service.dto.res.ExamResponse;
-import com.doanptit.elearing_backend_service.dto.res.LessonResponse;
-import com.doanptit.elearing_backend_service.dto.res.SectionResponse;
+import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
-import com.doanptit.elearing_backend_service.mapper.CourseMapper;
-import com.doanptit.elearing_backend_service.mapper.ExamMapper;
-import com.doanptit.elearing_backend_service.mapper.LessonMapper;
-import com.doanptit.elearing_backend_service.mapper.SectionMapper;
+import com.doanptit.elearing_backend_service.mapper.*;
 import com.doanptit.elearing_backend_service.model.*;
 import com.doanptit.elearing_backend_service.repository.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.S3Service;
-import jakarta.transaction.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +41,7 @@ public class CourseCreationServiceImpl implements CourseService {
     private final LessonMapper lessonMapper;
     private final ExamMapper examMapper;
     private final CourseMapper courseMapper;
+    private final AdminCourseMapper adminCourseMapper;
 
     @Override
     @Transactional
@@ -210,5 +210,59 @@ public class CourseCreationServiceImpl implements CourseService {
         if (!course.getAuthor().getEmail().equals(teacherEmail)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort) {
+
+        // 1. Logic Sort (Phiên bản an toàn, copy từ Admin)
+        List<Sort.Order> orders = new ArrayList<>();
+        if (sort != null && sort.length > 0) {
+            for (String sortOrder : sort) {
+                if (sortOrder == null || sortOrder.trim().isEmpty()) continue;
+                String[] parts = sortOrder.split(",");
+                String field = parts[0].trim();
+                if (field.isEmpty() || field.equalsIgnoreCase("asc") || field.equalsIgnoreCase("desc")) continue;
+
+                if (parts.length == 2 && parts[1] != null && !parts[1].trim().isEmpty()) {
+                    Sort.Direction direction = parts[1].trim().equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+                    orders.add(new Sort.Order(direction, field));
+                } else {
+                    orders.add(new Sort.Order(Sort.Direction.ASC, field));
+                }
+            }
+        }
+        if (orders.isEmpty()) {
+            orders.add(new Sort.Order(Sort.Direction.ASC, "id"));
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orders));
+
+        // 2. Gọi Repository (Không cần filter status)
+        Page<Course> coursePage = courseRepository.findByAuthor_Email(teacherEmail, pageable);
+
+        // 3. Map sang DTO
+        Page<AdminCourseListDto> dtoPage = coursePage.map(adminCourseMapper::toCourseListDto);
+
+        // 4. Chuyển sang PagedResponse
+        return new PagedResponse<>(
+                dtoPage.getContent(),
+                dtoPage.getNumber(),
+                dtoPage.getSize(),
+                dtoPage.getTotalElements(),
+                dtoPage.getTotalPages()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        checkCourseAuthorship(course, teacherEmail); // (Hàm helper cũ của bạn)
+
+        return adminCourseMapper.toCourseDetailDto(course);
     }
 }
