@@ -8,7 +8,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface AdminCourseMapper {
     @Mapping(target = "author", source = "author")
-    @Mapping(target = "sectionCount", expression = "java(course.getSections() != null ? course.getSections().size() : 0)")
+    @Mapping(target = "sectionCount", expression = "java(course.getSections() == null ? 0 : course.getSections().size())")
     AdminCourseListDto toCourseListDto(Course course);
 
     @Mapping(target = "author", source = "author")

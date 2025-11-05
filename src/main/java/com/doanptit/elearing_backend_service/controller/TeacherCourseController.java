@@ -8,10 +8,7 @@ import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,13 +23,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/teacher/courses")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('TEACHER') || hasRole('ADMIN')")
-@Tag(name = "4. Teacher - Course Creation", description = "Các API cho phép Teacher tạo và quản lý khóa học (lưu nháp, gửi duyệt)")
 public class TeacherCourseController {
 
     private final CourseService courseCreationService;
 
-    @Operation(summary = "[TEACHER] Lấy danh sách khóa học của tôi",
-            description = "Lấy danh sách (phân trang) các khóa học do chính Teacher đang đăng nhập sở hữu. Yêu cầu quyền TEACHER/ADMIN.")
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<AdminCourseListDto>>> getAllMyCourses(
             Authentication authentication,
@@ -46,13 +40,6 @@ public class TeacherCourseController {
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
 
-    @Operation(summary = "[TEACHER] Lấy chi tiết khóa học để sửa (Load nháp)",
-            description = "Lấy toàn bộ cây thông tin lồng nhau (Section, Lesson, Exam...) của một khóa học để Teacher tiếp tục chỉnh sửa. Yêu cầu quyền TEACHER/ADMIN.")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Thành công"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Không tìm thấy khóa học"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Không có quyền (không phải chủ khóa học)")
-    })
     @GetMapping("/{courseId}")
     public ResponseEntity<ApiResponse<AdminCourseDetailDto>> getMyCourseForEdit(
             @Parameter(description = "ID của khóa học cần sửa", required = true) @PathVariable Long courseId,
@@ -62,11 +49,6 @@ public class TeacherCourseController {
     }
 
     // Bước 1: Tạo thông tin chung của khóa học
-    @Operation(summary = "[TEACHER] Bước 1: Tạo thông tin khóa học (Draft)",
-            description = "Tạo một khung khóa học mới với trạng thái DRAFT. Yêu cầu quyền TEACHER/ADMIN.")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
-    })
     @PostMapping
     public ResponseEntity<ApiResponse<CreateCourseResponse>> createCourse(
             @Valid @RequestBody CreateCourseRequestDto request,
@@ -76,7 +58,6 @@ public class TeacherCourseController {
     }
 
     // Upload ảnh bìa cho khóa học
-    @Operation(summary = "[TEACHER] Tải ảnh bìa khóa học", description = "Yêu cầu quyền TEACHER/ADMIN.")
     @PostMapping(value = "/{courseId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadCourseImage(
             @Parameter(description = "ID của khóa học", required = true) @PathVariable Long courseId,
@@ -87,10 +68,6 @@ public class TeacherCourseController {
     }
 
     // Bước 2: Tạo chương mới cho khóa học
-    @Operation(summary = "[TEACHER] Bước 2: Tạo chương mới", description = "Thêm một chương mới vào khóa học nháp. Yêu cầu quyền TEACHER/ADMIN.")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
-    })
     @PostMapping("/{courseId}/sections")
     public ResponseEntity<ApiResponse<SectionResponse>> createSection(
             @Parameter(description = "ID của khóa học", required = true) @PathVariable Long courseId,
@@ -101,10 +78,6 @@ public class TeacherCourseController {
     }
 
     // Bước 3: Tạo bài giảng mới trong chương
-    @Operation(summary = "[TEACHER] Bước 3: Tạo bài giảng mới", description = "Thêm một bài giảng (Video/Article) vào một chương. Yêu cầu quyền TEACHER/ADMIN.")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
-    })
     @PostMapping("/sections/{sectionId}/lessons")
     public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
             @Parameter(description = "ID của chương", required = true) @PathVariable Long sectionId,
@@ -115,7 +88,6 @@ public class TeacherCourseController {
     }
 
     // Bước 4: Upload video cho bài giảng
-    @Operation(summary = "[TEACHER] Tải video bài giảng", description = "Tải file video cho một bài giảng (loại VIDEO). Yêu cầu quyền TEACHER/ADMIN.")
     @PostMapping(value = "/lessons/upload/{lessonId}/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadLessonVideo(
             @Parameter(description = "ID của bài giảng", required = true) @PathVariable Long lessonId,
@@ -126,10 +98,6 @@ public class TeacherCourseController {
     }
 
     // Bước 4: Tạo bài kiểm tra trong chương
-    @Operation(summary = "[TEACHER] Bước 4: Tạo bài kiểm tra", description = "Thêm một bài kiểm tra (lồng câu hỏi/câu trả lời) vào một chương. Yêu cầu quyền TEACHER/ADMIN.")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Tạo thành công")
-    })
     @PostMapping("/sections/{sectionId}/exams")
     public ResponseEntity<ApiResponse<ExamResponse>> createExam(
             @Parameter(description = "ID của chương", required = true) @PathVariable Long sectionId,
@@ -140,12 +108,6 @@ public class TeacherCourseController {
     }
 
     // Bước 5: Gửi khóa học đi duyệt
-    @Operation(summary = "[TEACHER] Bước 5: Gửi khóa học đi duyệt",
-            description = "Thay đổi trạng thái khóa học từ DRAFT/REJECTED sang PENDING_APPROVAL. Yêu cầu quyền TEACHER/ADMIN.")
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Gửi duyệt thành công"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Khóa học không đủ điều kiện (ví dụ: thiếu ảnh bìa, thiếu bài giảng)")
-    })
     @PatchMapping("/{courseId}/submit-review")
     public ResponseEntity<ApiResponse<String>> submitCourseForReview(
             @Parameter(description = "ID của khóa học", required = true) @PathVariable Long courseId,
