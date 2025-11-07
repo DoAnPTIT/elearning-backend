@@ -6,7 +6,6 @@ import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.service.UserService;
-import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -25,10 +24,10 @@ public class UserController {
 
     private final UserService userService;
 
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('TEACHER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER') or hasRole('STUDENT')")
     @PatchMapping("/{id}/change-password")
     public ResponseEntity<ApiResponse<String>> changePassword(
-            @Parameter(description = "ID của người dùng", required = true) @PathVariable Integer id,
+            @PathVariable Integer id,
             @RequestBody @Valid ChangePasswordRequest request,
             Principal principal) {
         userService.changePassword(id, principal.getName(), request);
@@ -48,8 +47,8 @@ public class UserController {
 
     @PostMapping(value = "/{userId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<UploadImageResponse>> uploadUserImage(
-            @Parameter(description = "ID của người dùng", required = true) @PathVariable Integer userId,
-            @Parameter(description = "File ảnh", required = true) @RequestParam("file") MultipartFile file
+            @PathVariable Integer userId,
+            @RequestParam("file") MultipartFile file
     ) {
         ApiResponse<UploadImageResponse> response = userService.uploadUserImage(userId, file);
         return ResponseEntity.ok(response);
