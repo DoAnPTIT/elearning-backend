@@ -1,11 +1,15 @@
 package com.doanptit.elearing_backend_service.service;
 
+import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.res.PublicCourseDetailDto;
 import com.doanptit.elearing_backend_service.dto.res.PublicCourseListDto;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.doanptit.elearing_backend_service.enums.CourseCategory;
 
 public interface PublicCourseService {
-    Page<PublicCourseListDto> getAllPublicCourses(Pageable pageable);
+    PagedResponse<PublicCourseListDto> getAllPublicCourses(
+            int page, int size, CourseCategory category,
+            String title, String authorName, String... sort
+    );
+
     PublicCourseDetailDto getPublicCourseDetails(Long courseId);
 }
