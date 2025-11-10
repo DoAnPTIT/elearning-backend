@@ -131,6 +131,105 @@ public class PublicCourseServiceImpl implements PublicCourseService {
 
     @Override
     @Transactional(readOnly = true)
+    public PagedResponse<PublicCourseListDto> searchCourses(
+            String q, int page, int size, String... sort) {
+
+        // --- 1️⃣ Chuẩn hóa paging  ---
+        if (page < 0) page = 0;
+        if (size <= 0) size = 10;
+        if (size > 100) size = 100;
+
+        // --- 2️⃣ Xử lý sort động  ---
+        List<String> allowedFields = List.of("id", "title", "category", "createdOn");
+        List<Sort.Order> orders = new ArrayList<>();
+        if (sort != null && sort.length > 0) {
+            for (int i = 0; i < sort.length; i++) {
+                String raw = sort[i];
+                if (raw == null) continue;
+                raw = raw.trim();
+                if (raw.isBlank()) continue;
+                if (raw.contains(",")) {
+                    String[] parts = raw.split(",", 2);
+                    String field = parts[0].trim();
+                    String direction = parts.length == 2 ? parts[1].trim() : "asc";
+                    if (!allowedFields.contains(field)) continue;
+                    orders.add(direction.equalsIgnoreCase("desc") ? Sort.Order.desc(field) : Sort.Order.asc(field));
+                    continue;
+                }
+                String next = (i + 1) < sort.length ? sort[i + 1] : null;
+                if (next != null) {
+                    next = next.trim();
+                    if (next.equalsIgnoreCase("asc") || next.equalsIgnoreCase("desc")) {
+                        String field = raw;
+                        String direction = next;
+                        if (allowedFields.contains(field)) {
+                            orders.add(direction.equalsIgnoreCase("desc") ? Sort.Order.desc(field) : Sort.Order.asc(field));
+                        }
+                        i++;
+                        continue;
+                    }
+                }
+                String field = raw;
+                if (!allowedFields.contains(field)) continue;
+                orders.add(Sort.Order.asc(field));
+            }
+        }
+        // Mặc định 'createdOn,desc'
+        Sort sortSpec = orders.isEmpty()
+                ? Sort.by(Sort.Order.desc("createdOn"))
+                : Sort.by(orders);
+        Pageable pageable = PageRequest.of(page, size, sortSpec);
+
+        // --- 3️⃣ Tạo Specification (Logic mới cho 'q') ---
+        Specification<Course> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // --- ĐIỀU KIỆN BẮT BUỘC: ACTIVE ---
+            predicates.add(cb.equal(root.get("status"), CourseStatus.ACTIVE));
+
+            // --- LOGIC TÌM KIẾM "q" ---
+            if (q != null && !q.trim().isEmpty()) {
+                String searchQuery = "%" + q.toLowerCase().trim() + "%";
+
+                // 1. Tìm theo Tiêu đề
+                Predicate titleMatch = cb.like(cb.lower(root.get("title")), searchQuery);
+
+                // 2. Tìm theo Thể loại (Category)
+                Predicate categoryMatch = cb.like(cb.lower(root.get("category").as(String.class)), searchQuery);
+
+                // 3. Tìm theo Tên Giảng viên (JOIN)
+                Join<Course, User> authorJoin = root.join("author", JoinType.LEFT);
+                Predicate firstNameMatch = cb.like(cb.lower(authorJoin.get("firstname")), searchQuery);
+                Predicate lastNameMatch = cb.like(cb.lower(authorJoin.get("lastname")), searchQuery);
+                Predicate authorMatch = cb.or(firstNameMatch, lastNameMatch);
+
+                // Gộp 3 điều kiện tìm kiếm bằng OR
+                predicates.add(cb.or(titleMatch, categoryMatch, authorMatch));
+
+                query.distinct(true);
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        // --- 4️⃣ Truy vấn ---
+        Page<Course> coursePage = courseRepository.findAll(spec, pageable);
+
+        // --- 5️⃣ Map dùng PublicMapper ---
+        Page<PublicCourseListDto> dtoPage = coursePage.map(publicCourseMapper::toCourseListDto);
+
+        // --- 6️⃣ Trả kết quả ---
+        return new PagedResponse<>(
+                dtoPage.getContent(),
+                dtoPage.getNumber(),
+                dtoPage.getSize(),
+                dtoPage.getTotalElements(),
+                dtoPage.getTotalPages()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PublicCourseDetailDto getPublicCourseDetails(Long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));

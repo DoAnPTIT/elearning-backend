@@ -40,4 +40,22 @@ public class CourseController {
         PublicCourseDetailDto courseDetails = publicCourseService.getPublicCourseDetails(id);
         return ResponseEntity.ok(ApiResponse.success(courseDetails));
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PagedResponse<PublicCourseListDto>>> searchCourses(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdOn,desc") String... sort
+    ) {
+        PagedResponse<PublicCourseListDto> courses = publicCourseService.searchCourses(
+                q, page, size, sort
+        );
+
+        if (courses.getTotalElements() == 0) {
+            return ResponseEntity.ok(ApiResponse.success("Không tìm thấy khóa học nào phù hợp.", courses));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(courses));
+    }
 }

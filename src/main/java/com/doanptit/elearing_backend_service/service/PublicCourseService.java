@@ -12,4 +12,8 @@ public interface PublicCourseService {
     );
 
     PublicCourseDetailDto getPublicCourseDetails(Long courseId);
+
+    PagedResponse<PublicCourseListDto> searchCourses(
+            String query, int page, int size, String... sort
+    );
 }
