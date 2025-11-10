@@ -1,13 +1,12 @@
 package com.doanptit.elearing_backend_service.dto.res;
 
-import com.doanptit.elearing_backend_service.enums.LessonType;
 import lombok.Data;
+import java.util.List;
 
 @Data
-public class PublicLessonDto {
+public class SectionDto {
     private Long id;
     private String title;
-    private Long duration;
     private Integer order;
-    private LessonType lessonType;
+    private List<LessonDto> lessons;
 }

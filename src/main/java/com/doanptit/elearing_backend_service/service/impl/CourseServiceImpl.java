@@ -6,6 +6,7 @@ import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
+import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.exception.AppException;
@@ -15,21 +16,24 @@ import com.doanptit.elearing_backend_service.model.*;
 import com.doanptit.elearing_backend_service.repository.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.S3Service;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class CourseCreationServiceImpl implements CourseService {
+public class CourseServiceImpl implements CourseService {
 
     private final CourseRepository courseRepository;
     private final SectionRepository sectionRepository;
@@ -42,19 +46,17 @@ public class CourseCreationServiceImpl implements CourseService {
     private final ExamMapper examMapper;
     private final CourseMapper courseMapper;
     private final AdminCourseMapper adminCourseMapper;
+    private final PublicCourseMapper publicCourseMapper;
 
     @Override
     @Transactional
     public CreateCourseResponse createCourse(CreateCourseRequestDto request, String teacherEmail) {
         User author = userRepository.findByEmail(teacherEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
         Course course = courseMapper.toEntity(request);
         course.setAuthor(author);
         course.setStatus(CourseStatus.DRAFT);
-
         Course savedCourse = courseRepository.save(course);
-
         return courseMapper.toResponseDto(savedCourse);
     }
 
@@ -72,12 +74,9 @@ public class CourseCreationServiceImpl implements CourseService {
     @Transactional
     public SectionResponse createSection(Long courseId, CreateSectionRequestDto request, String teacherEmail) {
         Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
-
         Section section = sectionMapper.toEntity(request);
         section.setCourse(course);
-
         Section savedSection = sectionRepository.save(section);
-
         return sectionMapper.toSectionResponseDto(savedSection);
     }
 
@@ -87,16 +86,12 @@ public class CourseCreationServiceImpl implements CourseService {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
         checkCourseAuthorship(section.getCourse(), teacherEmail);
-
         Lesson lesson = lessonMapper.toEntity(request);
-
         if (request.getLessonType() == LessonType.ARTICLE) {
             lesson.setArticleContent(request.getArticleContent());
         }
         lesson.setSection(section);
-
         Lesson savedLesson = lessonRepository.save(lesson);
-
         return lessonMapper.toResponseDto(savedLesson);
     }
 
@@ -108,7 +103,7 @@ public class CourseCreationServiceImpl implements CourseService {
         checkCourseAuthorship(lesson.getSection().getCourse(), teacherEmail);
 
         if (lesson.getLessonType() != LessonType.VIDEO) {
-            throw new AppException(ErrorCode.INTERNAL_ERROR);
+            throw new AppException(ErrorCode.INTERNAL_ERROR); // (Nên đổi sang lỗi cụ thể)
         }
 
         String videoUrl = s3Service.uploadFile(file, "lesson-videos");
@@ -124,11 +119,9 @@ public class CourseCreationServiceImpl implements CourseService {
                 .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
         checkCourseAuthorship(section.getCourse(), teacherEmail);
 
-        // 1. Tạo Exam chính (dùng mapper cho các trường cơ bản)
         Exam exam = examMapper.toEntity(request);
         exam.setSection(section);
 
-        // 2. Map thủ công Question và Answer để đảm bảo quan hệ 2 chiều
         List<Question> questions = new ArrayList<>();
         if (request.getQuestions() != null) {
             for (var questionDto : request.getQuestions()) {
@@ -136,7 +129,7 @@ public class CourseCreationServiceImpl implements CourseService {
                 question.setContent(questionDto.getContent());
                 question.setQuestionType(questionDto.getQuestionType());
                 question.setPoint(questionDto.getPoint());
-                question.setExam(exam); // Quan hệ về Exam
+                question.setExam(exam);
 
                 List<Answer> answers = new ArrayList<>();
                 if (questionDto.getAnswers() != null) {
@@ -144,7 +137,7 @@ public class CourseCreationServiceImpl implements CourseService {
                         Answer answer = new Answer();
                         answer.setContent(answerDto.getContent());
                         answer.setIsCorrect(answerDto.getIsCorrect());
-                        answer.setQuestion(question); // Quan hệ về Question
+                        answer.setQuestion(question);
                         answers.add(answer);
                     }
                 }
@@ -154,10 +147,7 @@ public class CourseCreationServiceImpl implements CourseService {
         }
         exam.setQuestions(questions);
 
-        // 3. Lưu (Cascade sẽ lưu cả Question và Answer)
         Exam savedExam = examRepository.save(exam);
-
-        // 4. Trả về DTO (dùng mapper)
         return examMapper.toResponseDto(savedExam);
     }
 
@@ -166,22 +156,16 @@ public class CourseCreationServiceImpl implements CourseService {
     public void submitCourseForReview(Long courseId, String teacherEmail) {
         Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
 
-        // 1. Kiểm tra trạng thái
         if (course.getStatus() != CourseStatus.DRAFT && course.getStatus() != CourseStatus.REJECTED) {
             throw new AppException(ErrorCode.INVALID_COURSE_STATUS_FOR_REVIEW);
         }
-
-        // 2. Kiểm tra ảnh bìa (Yêu cầu mới)
         if (course.getImage() == null || course.getImage().isEmpty()) {
             throw new AppException(ErrorCode.COURSE_MISSING_COVER_IMAGE);
         }
-
-        // 3. Kiểm tra nội dung (Yêu cầu cũ)
         List<Section> sections = course.getSections();
         if (sections == null || sections.isEmpty()) {
             throw new AppException(ErrorCode.COURSE_IS_EMPTY);
         }
-
         boolean hasContent = false;
         for (Section section : sections) {
             if ((section.getLessons() != null && !section.getLessons().isEmpty()) ||
@@ -193,10 +177,30 @@ public class CourseCreationServiceImpl implements CourseService {
         if (!hasContent) {
             throw new AppException(ErrorCode.COURSE_IS_EMPTY);
         }
-
-        // 4. Cập nhật trạng thái
         course.setStatus(CourseStatus.PENDING_APPROVAL);
         courseRepository.save(course);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort) {
+        // Dùng hàm phụ (helper method) ở cuối file này
+        Pageable pageable = createPageable(page, size, sort, "id");
+        Page<Course> coursePage = courseRepository.findByAuthor_Email(teacherEmail, pageable);
+        Page<AdminCourseListDto> dtoPage = coursePage.map(adminCourseMapper::toCourseListDto);
+        return new PagedResponse<>(
+                dtoPage.getContent(), dtoPage.getNumber(), dtoPage.getSize(),
+                dtoPage.getTotalElements(), dtoPage.getTotalPages()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+        checkCourseAuthorship(course, teacherEmail);
+        return adminCourseMapper.toCourseDetailDto(course);
     }
 
     private Course findCourseByIdAndAuthor(Long courseId, String teacherEmail) {
@@ -214,55 +218,131 @@ public class CourseCreationServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort) {
+    public PagedResponse<CourseListDto> getAllPublicCourses(
+            int page, int size, CourseCategory category,
+            String title, String authorName, String... sort) {
 
-        // 1. Logic Sort (Phiên bản an toàn, copy từ Admin)
-        List<Sort.Order> orders = new ArrayList<>();
-        if (sort != null && sort.length > 0) {
-            for (String sortOrder : sort) {
-                if (sortOrder == null || sortOrder.trim().isEmpty()) continue;
-                String[] parts = sortOrder.split(",");
-                String field = parts[0].trim();
-                if (field.isEmpty() || field.equalsIgnoreCase("asc") || field.equalsIgnoreCase("desc")) continue;
+        Pageable pageable = createPageable(page, size, sort, "id");
 
-                if (parts.length == 2 && parts[1] != null && !parts[1].trim().isEmpty()) {
-                    Sort.Direction direction = parts[1].trim().equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
-                    orders.add(new Sort.Order(direction, field));
-                } else {
-                    orders.add(new Sort.Order(Sort.Direction.ASC, field));
-                }
+        Specification<Course> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("status"), CourseStatus.ACTIVE));
+            if (category != null) predicates.add(cb.equal(root.get("category"), category));
+            if (title != null && !title.isBlank())
+                predicates.add(cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
+            if (authorName != null && !authorName.isBlank()) {
+                Join<Course, User> author = root.join("author", JoinType.LEFT);
+                String pattern = "%" + authorName.toLowerCase() + "%";
+                Predicate matchFirst = cb.like(cb.lower(author.get("firstname")), pattern);
+                Predicate matchLast = cb.like(cb.lower(author.get("lastname")), pattern);
+                predicates.add(cb.or(matchFirst, matchLast));
+                query.distinct(true);
             }
-        }
-        if (orders.isEmpty()) {
-            orders.add(new Sort.Order(Sort.Direction.ASC, "id"));
-        }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(orders));
+        Page<Course> coursePage = courseRepository.findAll(spec, pageable);
+        // Dùng PublicCourseMapper (tên DTO của bạn là CourseListDto)
+        Page<CourseListDto> dtoPage = coursePage.map(publicCourseMapper::toCourseListDto);
 
-        // 2. Gọi Repository (Không cần filter status)
-        Page<Course> coursePage = courseRepository.findByAuthor_Email(teacherEmail, pageable);
-
-        // 3. Map sang DTO
-        Page<AdminCourseListDto> dtoPage = coursePage.map(adminCourseMapper::toCourseListDto);
-
-        // 4. Chuyển sang PagedResponse
         return new PagedResponse<>(
-                dtoPage.getContent(),
-                dtoPage.getNumber(),
-                dtoPage.getSize(),
-                dtoPage.getTotalElements(),
-                dtoPage.getTotalPages()
+                dtoPage.getContent(), dtoPage.getNumber(), dtoPage.getSize(),
+                dtoPage.getTotalElements(), dtoPage.getTotalPages()
         );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail) {
+    public PagedResponse<CourseListDto> searchCourses(String q, int page, int size, String... sort) {
+
+        Pageable pageable = createPageable(page, size, sort, "createdOn");
+
+        Specification<Course> spec = (root, criteriaQuery, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("status"), CourseStatus.ACTIVE));
+
+            if (q != null && !q.trim().isEmpty()) {
+                String searchQuery = "%" + q.toLowerCase().trim() + "%";
+                Predicate titleMatch = cb.like(cb.lower(root.get("title")), searchQuery);
+                Predicate categoryMatch = cb.like(cb.lower(root.get("category").as(String.class)), searchQuery);
+                Join<Course, User> authorJoin = root.join("author", JoinType.LEFT);
+                Predicate firstNameMatch = cb.like(cb.lower(authorJoin.get("firstname")), searchQuery);
+                Predicate lastNameMatch = cb.like(cb.lower(authorJoin.get("lastname")), searchQuery);
+                Predicate authorMatch = cb.or(firstNameMatch, lastNameMatch);
+                predicates.add(cb.or(titleMatch, categoryMatch, authorMatch));
+                criteriaQuery.distinct(true);
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Course> coursePage = courseRepository.findAll(spec, pageable);
+        // Dùng PublicCourseMapper (tên DTO của bạn là CourseListDto)
+        Page<CourseListDto> dtoPage = coursePage.map(publicCourseMapper::toCourseListDto);
+
+        return new PagedResponse<>(
+                dtoPage.getContent(), dtoPage.getNumber(), dtoPage.getSize(),
+                dtoPage.getTotalElements(), dtoPage.getTotalPages()
+        );
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public CourseDetailDto getPublicCourseDetails(Long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+        if (course.getStatus() != CourseStatus.ACTIVE) {
+            throw new AppException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // Dùng PublicCourseMapper (tên DTO của bạn là CourseDetailDto)
+        return publicCourseMapper.toCourseDetailDto(course);
+    }
 
-        checkCourseAuthorship(course, teacherEmail); // (Hàm helper cũ của bạn)
+    private Pageable createPageable(int page, int size, String[] sort, String defaultSortField) {
+        if (page < 0) page = 0;
+        if (size <= 0) size = 10;
+        if (size > 100) size = 100;
 
-        return adminCourseMapper.toCourseDetailDto(course);
+        List<String> allowedFields = List.of("id", "title", "category", "createdOn"); // (Các trường được phép sort)
+        List<Sort.Order> orders = new ArrayList<>();
+
+        if (sort != null && sort.length > 0) {
+            for (int i = 0; i < sort.length; i++) {
+                String raw = sort[i];
+                if (raw == null) continue;
+                raw = raw.trim();
+                if (raw.isBlank()) continue;
+                if (raw.contains(",")) {
+                    String[] parts = raw.split(",", 2);
+                    String field = parts[0].trim();
+                    String direction = parts.length == 2 ? parts[1].trim() : "asc";
+                    if (!allowedFields.contains(field)) continue;
+                    orders.add(direction.equalsIgnoreCase("desc") ? Sort.Order.desc(field) : Sort.Order.asc(field));
+                    continue;
+                }
+                String next = (i + 1) < sort.length ? sort[i + 1] : null;
+                if (next != null) {
+                    next = next.trim();
+                    if (next.equalsIgnoreCase("asc") || next.equalsIgnoreCase("desc")) {
+                        String field = raw;
+                        String direction = next;
+                        if (allowedFields.contains(field)) {
+                            orders.add(direction.equalsIgnoreCase("desc") ? Sort.Order.desc(field) : Sort.Order.asc(field));
+                        }
+                        i++;
+                        continue;
+                    }
+                }
+                String field = raw;
+                if (!allowedFields.contains(field)) continue;
+                orders.add(Sort.Order.asc(field));
+            }
+        }
+
+        Sort sortSpec = orders.isEmpty()
+                ? Sort.by(Sort.Order.desc(defaultSortField))
+                : Sort.by(orders);
+
+        return PageRequest.of(page, size, sortSpec);
     }
 }

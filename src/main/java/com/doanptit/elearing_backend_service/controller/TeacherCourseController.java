@@ -24,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 @PreAuthorize("hasRole('TEACHER') || hasRole('ADMIN')")
 public class TeacherCourseController {
 
-    private final CourseService courseCreationService;
+    private final CourseService courseService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<AdminCourseListDto>>> getAllMyCourses(
@@ -33,7 +33,7 @@ public class TeacherCourseController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String... sort) {
 
-        PagedResponse<AdminCourseListDto> courses = courseCreationService.getAllCoursesForTeacher(
+        PagedResponse<AdminCourseListDto> courses = courseService.getAllCoursesForTeacher(
                 authentication.getName(), page, size, sort);
 
         return ResponseEntity.ok(ApiResponse.success(courses));
@@ -43,7 +43,7 @@ public class TeacherCourseController {
     public ResponseEntity<ApiResponse<AdminCourseDetailDto>> getMyCourseForEdit(
             @PathVariable Long courseId,
             Authentication authentication) {
-        AdminCourseDetailDto courseDetails = courseCreationService.getCourseForEdit(courseId, authentication.getName());
+        AdminCourseDetailDto courseDetails = courseService.getCourseForEdit(courseId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(courseDetails));
     }
 
@@ -52,7 +52,7 @@ public class TeacherCourseController {
     public ResponseEntity<ApiResponse<CreateCourseResponse>> createCourse(
             @Valid @RequestBody CreateCourseRequestDto request,
             Authentication authentication) {
-        CreateCourseResponse newCourse = courseCreationService.createCourse(request, authentication.getName());
+        CreateCourseResponse newCourse = courseService.createCourse(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newCourse));
     }
 
@@ -62,7 +62,7 @@ public class TeacherCourseController {
             @PathVariable Long courseId,
             @RequestParam("file") MultipartFile file,
             Authentication authentication) {
-        String imageUrl = courseCreationService.uploadCourseImage(courseId, file, authentication.getName());
+        String imageUrl = courseService.uploadCourseImage(courseId, file, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(imageUrl));
     }
 
@@ -72,7 +72,7 @@ public class TeacherCourseController {
             @PathVariable Long courseId,
             @Valid @RequestBody CreateSectionRequestDto request,
             Authentication authentication) {
-        SectionResponse newSection = courseCreationService.createSection(courseId, request, authentication.getName());
+        SectionResponse newSection = courseService.createSection(courseId, request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newSection));
     }
 
@@ -82,7 +82,7 @@ public class TeacherCourseController {
             @PathVariable Long sectionId,
             @Valid @RequestBody CreateLessonRequestDto request,
             Authentication authentication) {
-        LessonResponse newLesson = courseCreationService.createLesson(sectionId, request, authentication.getName());
+        LessonResponse newLesson = courseService.createLesson(sectionId, request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newLesson));
     }
 
@@ -92,7 +92,7 @@ public class TeacherCourseController {
             @PathVariable Long lessonId,
             @RequestParam("file") MultipartFile file,
             Authentication authentication) {
-        String videoUrl = courseCreationService.uploadLessonVideo(lessonId, file, authentication.getName());
+        String videoUrl = courseService.uploadLessonVideo(lessonId, file, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(videoUrl));
     }
 
@@ -102,7 +102,7 @@ public class TeacherCourseController {
             @PathVariable Long sectionId,
             @Valid @RequestBody CreateExamRequestDto request,
             Authentication authentication) {
-        ExamResponse newExam = courseCreationService.createExam(sectionId, request, authentication.getName());
+        ExamResponse newExam = courseService.createExam(sectionId, request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newExam));
     }
 
@@ -111,7 +111,7 @@ public class TeacherCourseController {
     public ResponseEntity<ApiResponse<String>> submitCourseForReview(
             @PathVariable Long courseId,
             Authentication authentication) {
-        courseCreationService.submitCourseForReview(courseId, authentication.getName());
+        courseService.submitCourseForReview(courseId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã gửi khóa học thành công, vui lòng đợi thông báo từ email trong quá trình chúng tôi phê duyệt"));
     }
 }

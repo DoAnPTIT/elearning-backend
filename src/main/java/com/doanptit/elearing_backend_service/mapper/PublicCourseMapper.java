@@ -6,9 +6,9 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface PublicCourseMapper {
-    PublicCourseListDto toCourseListDto(Course course);
-    PublicCourseDetailDto toCourseDetailDto(Course course);
-    PublicSectionDto toSectionDto(Section section);
-    PublicLessonDto toLessonDto(Lesson lesson);
-    PublicAuthorDto toAuthorDto(User author);
+    CourseListDto toCourseListDto(Course course);
+    CourseDetailDto toCourseDetailDto(Course course);
+    SectionDto toSectionDto(Section section);
+    LessonDto toLessonDto(Lesson lesson);
+    AuthorDto toAuthorDto(User author);
 }
