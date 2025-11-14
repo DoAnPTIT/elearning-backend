@@ -8,6 +8,7 @@ import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
+import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +42,7 @@ public class CourseServiceImpl implements CourseService {
     private final LessonRepository lessonRepository;
     private final ExamRepository examRepository;
     private final UserRepository userRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final S3Service s3Service;
     private final SectionMapper  sectionMapper;
     private final LessonMapper lessonMapper;
@@ -285,17 +288,31 @@ public class CourseServiceImpl implements CourseService {
         );
     }
 
-
     @Override
     @Transactional(readOnly = true)
-    public CourseDetailDto getPublicCourseDetails(Long courseId) {
+    public CourseDetailDto getPublicCourseDetails(Long courseId, Authentication authentication) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        // 1. Khóa học phải ACTIVE (của bạn)
         if (course.getStatus() != CourseStatus.ACTIVE) {
             throw new AppException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Dùng PublicCourseMapper (tên DTO của bạn là CourseDetailDto)
-        return publicCourseMapper.toCourseDetailDto(course);
+
+        // 2. Logic kiểm tra Student
+        // (Chúng ta mặc định người gọi API này là Student,
+        // vì Admin/Teacher sẽ gọi API riêng của họ)
+        String studentEmail = authentication.getName();
+        EnrollmentStatus status = enrollmentRepository.findEnrollmentStatus(studentEmail, courseId)
+                .orElse(null); // (null nếu chưa đăng ký)
+
+        if (status == EnrollmentStatus.APPROVED) {
+            // Đã được duyệt -> Trả về DTO
+            return publicCourseMapper.toCourseDetailDto(course);
+        }
+
+        // Nếu không (chưa đăng ký, PENDING, REJECTED) -> Báo lỗi
+        throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
     }
 
     private Pageable createPageable(int page, int size, String[] sort, String defaultSortField) {

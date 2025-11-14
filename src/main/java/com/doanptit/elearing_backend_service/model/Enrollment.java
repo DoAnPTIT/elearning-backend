@@ -1,13 +1,16 @@
 package com.doanptit.elearing_backend_service.model;
 
+import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "enrollments")
+@Table(name = "enrollments",
+        uniqueConstraints = {
+                // 2. Đảm bảo 1 user không thể đăng ký 1 course 2 lần
+                @UniqueConstraint(columnNames = {"user_id", "course_id"})
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,8 +22,11 @@ public class Enrollment extends BaseEntity {
     private Long id;
 
     private Boolean active = true;
-    private Integer status;
     private Float progress;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private EnrollmentStatus status;
 
     @ManyToOne
     @JoinColumn(name = "user_id")

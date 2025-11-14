@@ -7,6 +7,7 @@ import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface CourseService {
@@ -27,7 +28,7 @@ public interface CourseService {
             String title, String authorName, String... sort
     );
 
-    CourseDetailDto getPublicCourseDetails(Long courseId);
+    CourseDetailDto getPublicCourseDetails(Long courseId, Authentication authentication);
 
     PagedResponse<CourseListDto> searchCourses(
             String query, int page, int size, String... sort
