@@ -7,6 +7,7 @@ import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
+import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import jakarta.validation.Valid;
@@ -137,5 +138,30 @@ public class TeacherCourseController {
 
         enrollmentService.rejectEnrollment(enrollmentId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã từ chối học viên."));
+    }
+
+    @DeleteMapping("/enrollments/{enrollmentId}")
+    public ResponseEntity<ApiResponse<String>> removeEnrollment(
+            @PathVariable Long enrollmentId,
+            Authentication authentication) {
+
+        enrollmentService.removeEnrollment(enrollmentId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa học viên khỏi khóa học."));
+    }
+
+    @GetMapping("/{courseId}/students")
+    public ResponseEntity<ApiResponse<PagedResponse<EnrollmentStudentDto>>> getCourseEnrollments(
+            @PathVariable Long courseId,
+            Authentication authentication,
+            @RequestParam(required = false) EnrollmentStatus status, // Lọc (PENDING, APPROVED...)
+            @RequestParam(required = false) String studentName, // Tìm kiếm
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "enrolledAt,desc") String... sort) {
+
+        PagedResponse<EnrollmentStudentDto> enrollments = enrollmentService.getEnrollmentsForCourse(
+                courseId, authentication.getName(), status, studentName, page, size, sort
+        );
+        return ResponseEntity.ok(ApiResponse.success(enrollments));
     }
 }

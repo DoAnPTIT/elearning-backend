@@ -3,11 +3,12 @@ package com.doanptit.elearing_backend_service.repository;
 import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.model.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
-public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
+public interface EnrollmentRepository extends JpaRepository<Enrollment, Long>, JpaSpecificationExecutor<Enrollment> {
 
     // Kiểm tra 1 user đã đăng ký 1 course hay chưa
     Optional<Enrollment> findByUser_EmailAndCourse_Id(String email, Long courseId);
