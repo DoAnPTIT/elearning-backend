@@ -4,9 +4,9 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class PublicSectionDto {
+public class SectionDto {
     private Long id;
     private String title;
     private Integer order;
-    private List<PublicLessonDto> lessons;
+    private List<LessonDto> lessons;
 }

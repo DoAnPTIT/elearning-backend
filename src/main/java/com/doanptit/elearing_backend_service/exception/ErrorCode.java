@@ -10,10 +10,17 @@ public enum ErrorCode {
     // 404 Not Found
     USER_NOT_FOUND("USER_NOT_FOUND", "User không tồn tại", HttpStatus.NOT_FOUND),
     COURSE_NOT_FOUND("COURSE_NOT_FOUND", "Khóa học không tồn tại", HttpStatus.NOT_FOUND),
+    ENROLLMENT_NOT_FOUND("ENROLLMENT_NOT_FOUND", "Không tìm thấy lượt đăng ký này", HttpStatus.NOT_FOUND),
 
     // 400 Bad Request
     ENROLLMENT_FAILED("ENROLLMENT_FAILED", "Đăng ký khóa học thất bại", HttpStatus.BAD_REQUEST),
     VALIDATION_ERROR("VALIDATION_ERROR", "Dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
+    COURSE_NOT_ACTIVE("COURSE_NOT_ACTIVE", "Khóa học này không hoạt động hoặc chưa được duyệt", HttpStatus.BAD_REQUEST),
+    ALREADY_ENROLLED("ALREADY_ENROLLED", "Bạn đã đăng ký khóa học này rồi", HttpStatus.BAD_REQUEST),
+    ENROLLMENT_NOT_PENDING("ENROLLMENT_NOT_PENDING", "Lượt đăng ký này không ở trạng thái 'Chờ phê duyệt'", HttpStatus.BAD_REQUEST),
+
+    // 403 Forbidden
+    ENROLLMENT_NOT_APPROVED("ENROLLMENT_NOT_APPROVED", "Bạn chưa đăng ký hoặc chưa được phê duyệt vào khóa học này", HttpStatus.FORBIDDEN),
 
     // Thêm lỗi đã từng gặp: Email đã tồn tại
     USER_EMAIL_EXISTS("USER_EMAIL_EXISTS", "Email đã được sử dụng", HttpStatus.BAD_REQUEST),

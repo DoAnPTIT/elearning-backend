@@ -4,10 +4,12 @@ import com.doanptit.elearing_backend_service.enums.LessonType;
 import lombok.Data;
 
 @Data
-public class PublicLessonDto {
+public class LessonDto {
     private Long id;
     private String title;
     private Long duration;
     private Integer order;
     private LessonType lessonType;
+    private String videoUrl;
+    private String articleContent;
 }

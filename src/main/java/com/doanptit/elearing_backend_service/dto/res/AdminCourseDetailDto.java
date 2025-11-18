@@ -17,4 +17,5 @@ public class AdminCourseDetailDto {
     private CourseCategory category;
     private AdminAuthorDto author;
     private List<AdminSectionDto> sections;
+    private List<EnrollmentStudentDto> enrollments;
 }

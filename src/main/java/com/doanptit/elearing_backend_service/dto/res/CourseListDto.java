@@ -4,10 +4,10 @@ import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import lombok.Data;
 
 @Data
-public class PublicCourseListDto {
+public class CourseListDto {
     private Long id;
     private String title;
     private String image;
     private CourseCategory category;
-    private PublicAuthorDto author;
+    private AuthorDto author;
 }

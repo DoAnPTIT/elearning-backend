@@ -19,4 +19,12 @@ public interface AdminCourseMapper {
     AdminQuestionDto toQuestionDto(Question question);
     AdminAnswerDto toAnswerDto(Answer answer);
     AdminAuthorDto toAuthorDto(User author);
+
+    @Mapping(target = "enrollmentId", source = "id")
+    @Mapping(target = "enrolledAt", source = "createdOn") // <-- THÊM DÒNG NÀY (Fix lỗi null)
+    @Mapping(target = "studentId", source = "user.id")
+    @Mapping(target = "studentEmail", source = "user.email")
+    @Mapping(target = "studentFirstName", source = "user.firstname")
+    @Mapping(target = "studentLastName", source = "user.lastname")
+    EnrollmentStudentDto toEnrollmentStudentDto(Enrollment enrollment);
 }

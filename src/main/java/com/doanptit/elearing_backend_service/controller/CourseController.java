@@ -2,26 +2,26 @@ package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
-import com.doanptit.elearing_backend_service.dto.res.PublicCourseDetailDto;
-import com.doanptit.elearing_backend_service.dto.res.PublicCourseListDto;
+import com.doanptit.elearing_backend_service.dto.res.CourseDetailDto;
+import com.doanptit.elearing_backend_service.dto.res.CourseListDto;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
-import com.doanptit.elearing_backend_service.service.PublicCourseService;
+import com.doanptit.elearing_backend_service.service.CourseService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('TEACHER') || hasRole('ADMIN') || hasRole('STUDENT')")
 public class CourseController {
 
-    private final PublicCourseService publicCourseService;
+    private final CourseService courseService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PagedResponse<PublicCourseListDto>>> getAllCourses(
+    public ResponseEntity<ApiResponse<PagedResponse<CourseListDto>>> getAllCourses(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) CourseCategory category,
@@ -29,15 +29,36 @@ public class CourseController {
             @RequestParam(required = false) String authorName,
             @RequestParam(defaultValue = "id,asc") String... sort
     ) {
-        PagedResponse<PublicCourseListDto> courses = publicCourseService.getAllPublicCourses(
+        PagedResponse<CourseListDto> courses = courseService.getAllPublicCourses(
                 page, size, category, title, authorName, sort
         );
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PublicCourseDetailDto>> getCourseDetails(@PathVariable Long id) {
-        PublicCourseDetailDto courseDetails = publicCourseService.getPublicCourseDetails(id);
+    public ResponseEntity<ApiResponse<CourseDetailDto>> getCourseDetails(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        CourseDetailDto courseDetails = courseService.getPublicCourseDetails(id, authentication);
         return ResponseEntity.ok(ApiResponse.success(courseDetails));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PagedResponse<CourseListDto>>> searchCourses(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdOn,desc") String... sort
+    ) {
+        PagedResponse<CourseListDto> courses = courseService.searchCourses(
+                q, page, size, sort
+        );
+
+        if (courses.getTotalElements() == 0) {
+            return ResponseEntity.ok(ApiResponse.success("Không tìm thấy khóa học nào phù hợp.", courses));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(courses));
     }
 }

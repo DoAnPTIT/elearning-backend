@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class PublicCourseDetailDto {
+public class CourseDetailDto {
     private Long id;
     private String title;
     private String description;
@@ -13,6 +13,6 @@ public class PublicCourseDetailDto {
     private String objectives;
     private String targetAudience;
     private CourseCategory category;
-    private PublicAuthorDto author;
-    private List<PublicSectionDto> sections;
+    private AuthorDto author;
+    private List<SectionDto> sections;
 }
