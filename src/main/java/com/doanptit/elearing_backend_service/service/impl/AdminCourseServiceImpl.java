@@ -134,6 +134,10 @@ public class AdminCourseServiceImpl implements AdminCourseService {
     public AdminCourseDetailDto getCourseDetails(Long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+        if (course.getStatus() == CourseStatus.DRAFT) {
+            // Chúng ta báo 404 (Không tìm thấy) để giấu sự tồn tại của nó
+            throw new AppException(ErrorCode.COURSE_NOT_FOUND);
+        }
         return adminCourseMapper.toCourseDetailDto(course);
     }
 
@@ -153,7 +157,7 @@ public class AdminCourseServiceImpl implements AdminCourseService {
                         ? request.getRejectionReason()
                         : null
         );
-
-        return getCourseDetails(courseId);
+        Course savedCourse = courseRepository.save(course);
+        return adminCourseMapper.toCourseDetailDto(savedCourse);
     }
 }

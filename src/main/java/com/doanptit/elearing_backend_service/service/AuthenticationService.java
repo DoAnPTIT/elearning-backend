@@ -93,7 +93,7 @@ public class AuthenticationService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        String resetLink = "http://localhost:8080/api/auth/reset-password?token=" + token;
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
         String subject = "[Elearning PTIT] Yêu cầu đặt lại mật khẩu";
         String body = "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n\n"
                 + "👉 Nhấn vào đây để đặt lại mật khẩu: " + resetLink
@@ -125,5 +125,4 @@ public class AuthenticationService {
         resetToken.setDeletedOn(true);
         passwordResetTokenRepository.save(resetToken);
     }
-
 }

@@ -32,6 +32,7 @@ public class Course extends BaseEntity {
     private Boolean active = true;
 
     @OneToMany(mappedBy = "course")
+    @BatchSize(size = 20)
     private List<Enrollment> enrollments;
 
     @Column(columnDefinition = "TEXT")

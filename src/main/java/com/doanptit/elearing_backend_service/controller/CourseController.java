@@ -9,6 +9,7 @@ import com.doanptit.elearing_backend_service.service.CourseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,8 +36,11 @@ public class CourseController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CourseDetailDto>> getCourseDetails(@PathVariable Long id) {
-        CourseDetailDto courseDetails = courseService.getPublicCourseDetails(id);
+    public ResponseEntity<ApiResponse<CourseDetailDto>> getCourseDetails(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        CourseDetailDto courseDetails = courseService.getPublicCourseDetails(id, authentication);
         return ResponseEntity.ok(ApiResponse.success(courseDetails));
     }
 

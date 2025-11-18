@@ -10,4 +10,6 @@ public class LessonDto {
     private Long duration;
     private Integer order;
     private LessonType lessonType;
+    private String videoUrl;
+    private String articleContent;
 }

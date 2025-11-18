@@ -8,6 +8,7 @@ import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
+import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class TeacherCourseController {
 
     private final CourseService courseService;
+    private final EnrollmentService enrollmentService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<AdminCourseListDto>>> getAllMyCourses(
@@ -113,5 +115,27 @@ public class TeacherCourseController {
             Authentication authentication) {
         courseService.submitCourseForReview(courseId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã gửi khóa học thành công, vui lòng đợi thông báo từ email trong quá trình chúng tôi phê duyệt"));
+    }
+
+    // --- API : PHÊ DUYỆT ĐĂNG KÝ ---
+    // (Chỉ Teacher/Admin mới có quyền)
+    @PatchMapping("/enrollments/{enrollmentId}/approve")
+    public ResponseEntity<ApiResponse<String>> approveEnrollment(
+            @PathVariable Long enrollmentId,
+            Authentication authentication) {
+
+        enrollmentService.approveEnrollment(enrollmentId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt học viên thành công."));
+    }
+
+    // --- API : TỪ CHỐI ĐĂNG KÝ ---
+    // (Chỉ Teacher/Admin mới có quyền)
+    @PatchMapping("/enrollments/{enrollmentId}/reject")
+    public ResponseEntity<ApiResponse<String>> rejectEnrollment(
+            @PathVariable Long enrollmentId,
+            Authentication authentication) {
+
+        enrollmentService.rejectEnrollment(enrollmentId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã từ chối học viên."));
     }
 }
