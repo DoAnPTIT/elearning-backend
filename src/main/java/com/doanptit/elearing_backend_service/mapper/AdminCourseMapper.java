@@ -9,6 +9,8 @@ import org.mapstruct.Mapping;
 public interface AdminCourseMapper {
     @Mapping(target = "author", source = "author")
     @Mapping(target = "sectionCount", expression = "java(course.getSections() == null ? 0 : course.getSections().size())")
+    @Mapping(target = "totalStudents", expression = "java(course.getEnrollments() == null ? 0 : (int) course.getEnrollments().stream().filter(e -> e.getStatus() == com.doanptit.elearing_backend_service.enums.EnrollmentStatus.APPROVED).count())")
+    @Mapping(target = "updatedAt", source = "updatedOn")
     AdminCourseListDto toCourseListDto(Course course);
 
     @Mapping(target = "author", source = "author")

@@ -4,6 +4,7 @@ import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
+import com.doanptit.elearing_backend_service.dto.res.AdminUserListDto;
 import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
 import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
@@ -45,6 +46,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final S3Service s3Service;
+    private final com.doanptit.elearing_backend_service.repository.CourseRepository courseRepository;
 
     @Override
     public UserResponseDto createNewUserByAdmin(UserRequestDto request) {
@@ -102,6 +104,90 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public Page<AdminUserListDto> findAllUsersForAdmin(int pageNo, int pageSize, String role, String... sorts) {
+        List<Sort.Order> orders = new ArrayList<>();
+        if(sorts!=null){
+            for(String sortBy: sorts){
+                Pattern pattern = Pattern.compile("(\\w+?)(:)(.*)");
+                Matcher matcher = pattern.matcher(sortBy);
+                if(matcher.find()){
+                    if(matcher.group(3).equalsIgnoreCase("asc")){
+                        orders.add(new Sort.Order(Sort.Direction.ASC, matcher.group(1)));
+                    }else{
+                        orders.add(new Sort.Order(Sort.Direction.DESC, matcher.group(1)));
+                    }
+                }
+            }
+        }
+        
+        Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by(orders));
+        Page<User> userPage;
+        
+        // Filter by role if provided
+        if (role != null && !role.isEmpty()) {
+            try {
+                Role roleEnum = Role.valueOf(role.toUpperCase());
+                userPage = userRepository.findByRole(roleEnum, pageable);
+            } catch (IllegalArgumentException e) {
+                userPage = userRepository.findAll(pageable);
+            }
+        } else {
+            userPage = userRepository.findAll(pageable);
+        }
+        
+        return userPage.map(this::mapUserToAdminUserListDto);
+    }
+    
+    private AdminUserListDto mapUserToAdminUserListDto(User user) {
+        AdminUserListDto dto = new AdminUserListDto();
+        dto.setId(user.getId().intValue());
+        dto.setEmail(user.getEmail());
+        dto.setFirstname(user.getFirstname());
+        dto.setLastname(user.getLastname());
+        dto.setDateOfBirth(user.getDateOfBirth());
+        dto.setRole(user.getRole());
+        dto.setImage(user.getImage());
+        dto.setActive(user.getActive());
+        
+        // For teachers, query courses by author and calculate stats
+        if (user.getRole() == Role.TEACHER) {
+            // Get all courses created by this teacher
+            List<com.doanptit.elearing_backend_service.model.Course> teacherCourses = 
+                    courseRepository.findByAuthor_Email(user.getEmail(), Pageable.unpaged()).getContent();
+            
+            dto.setCourseCount(teacherCourses.size());
+            
+            // Count unique students from all enrollments across all teacher's courses
+            long studentCount = teacherCourses.stream()
+                    .flatMap(course -> course.getEnrollments() != null ? course.getEnrollments().stream() : java.util.stream.Stream.empty())
+                    .filter(enrollment -> enrollment.getStatus() == com.doanptit.elearing_backend_service.enums.EnrollmentStatus.APPROVED)
+                    .map(enrollment -> enrollment.getUser().getId())
+                    .distinct()
+                    .count();
+            dto.setStudentCount((int) studentCount);
+            
+            // Calculate average rating (placeholder - need actual rating system)
+            dto.setRating(0.0);
+        }
+        
+        // For students, get approved course names
+        if (user.getRole() == Role.STUDENT && user.getEnrollments() != null) {
+            List<String> approvedCourseNames = user.getEnrollments().stream()
+                    .filter(enrollment -> enrollment.getStatus() == com.doanptit.elearing_backend_service.enums.EnrollmentStatus.APPROVED)
+                    .map(enrollment -> enrollment.getCourse().getTitle())
+                    .toList();
+            dto.setCourseNames(approvedCourseNames);
+            dto.setEnrolledCourses(approvedCourseNames.size());
+            
+            // TODO: Calculate completed courses and progress
+            dto.setCompletedCourses(0);
+            dto.setProgress(0.0);
+        }
+        
+        return dto;
+    }
+
+    @Override
     public void changePassword(Integer id, String email, ChangePasswordRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -129,11 +215,21 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        System.out.println("=== UPDATE PROFILE DEBUG ===");
+        System.out.println("Email: " + email);
+        System.out.println("Request dateOfBirth: " + request.getDateOfBirth());
+        System.out.println("User before update - dateOfBirth: " + user.getDateOfBirth());
+
         userMapper.updateUserFromDto(user, request);
 
-        userRepository.save(user);
+        System.out.println("User after mapper - dateOfBirth: " + user.getDateOfBirth());
 
-        return userMapper.toUserResponseDto(user);
+        User savedUser = userRepository.save(user);
+
+        System.out.println("User after save - dateOfBirth: " + savedUser.getDateOfBirth());
+        System.out.println("=== END DEBUG ===");
+
+        return userMapper.toUserResponseDto(savedUser);
     }
 
     @Override

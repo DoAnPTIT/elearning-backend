@@ -117,6 +117,22 @@ public class TeacherCourseController {
         return ResponseEntity.ok(ApiResponse.success("Đã gửi khóa học thành công, vui lòng đợi thông báo từ email trong quá trình chúng tôi phê duyệt"));
     }
 
+    // --- API : LẤY DANH SÁCH ENROLLMENT CỦA KHÓA HỌC ---
+    // (Chỉ Teacher/Admin mới có quyền)
+    @GetMapping("/{courseId}/enrollments")
+    public ResponseEntity<ApiResponse<PagedResponse<?>>> getCourseEnrollments(
+            @PathVariable Long courseId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        
+        PagedResponse<?> enrollments = enrollmentService.getCourseEnrollments(
+                courseId, status, authentication.getName(), page, size);
+        
+        return ResponseEntity.ok(ApiResponse.success(enrollments));
+    }
+
     // --- API : PHÊ DUYỆT ĐĂNG KÝ ---
     // (Chỉ Teacher/Admin mới có quyền)
     @PatchMapping("/enrollments/{enrollmentId}/approve")

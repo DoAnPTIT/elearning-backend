@@ -44,8 +44,9 @@ public class AdminController {
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<?>> getAllUsers(@RequestParam(defaultValue = "0") int page,
                                                       @RequestParam(defaultValue = "10") int size,
+                                                      @RequestParam(required = false) String role,
                                                       @RequestParam(defaultValue = "id,asc") String[] sort) {
-        return ResponseEntity.ok(ApiResponse.success(userService.findAllUsers(page, size, sort)));
+        return ResponseEntity.ok(ApiResponse.success(userService.findAllUsersForAdmin(page, size, role, sort)));
     }
 
     @GetMapping("/statistics")

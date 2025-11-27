@@ -15,8 +15,13 @@ public class AdminCourseListDto {
     private CourseCategory category;
     private AdminAuthorDto author;
     private Integer sectionCount;
+    private Integer totalStudents;
+    private String image;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdOn;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
 
 }
