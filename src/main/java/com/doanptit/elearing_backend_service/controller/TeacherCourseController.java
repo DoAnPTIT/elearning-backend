@@ -2,11 +2,10 @@ package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
-import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
+import com.doanptit.elearing_backend_service.dto.req.*;
 import com.doanptit.elearing_backend_service.dto.res.*;
+import com.doanptit.elearing_backend_service.enums.CourseCategory;
+import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import jakarta.validation.Valid;
@@ -33,10 +32,15 @@ public class TeacherCourseController {
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            // Thêm các tham số lọc
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) CourseStatus status,
+            @RequestParam(required = false) CourseCategory category,
+            //
             @RequestParam(defaultValue = "id,asc") String... sort) {
 
         PagedResponse<AdminCourseListDto> courses = courseService.getAllCoursesForTeacher(
-                authentication.getName(), page, size, sort);
+                authentication.getName(), page, size, title, status, category, sort);
 
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
@@ -171,5 +175,15 @@ public class TeacherCourseController {
 
         enrollmentService.rejectEnrollment(enrollmentId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã từ chối học viên."));
+    }
+
+    @PutMapping("/{courseId}")
+    public ResponseEntity<ApiResponse<AdminCourseDetailDto>> updateCourse(
+            @PathVariable Long courseId,
+            @Valid @RequestBody UpdateCourseRequestDto request,
+            Authentication authentication) {
+
+        AdminCourseDetailDto updatedCourse = courseService.updateCourse(courseId, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(updatedCourse));
     }
 }

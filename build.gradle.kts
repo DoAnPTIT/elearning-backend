@@ -1,6 +1,6 @@
 plugins {
 	java
-	id("org.springframework.boot") version "3.5.6"
+	id("org.springframework.boot") version "3.4.0"
 	id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -16,6 +16,14 @@ java {
 
 repositories {
 	mavenCentral()
+    maven { url = uri("https://repo.spring.io/milestone") }
+}
+
+dependencyManagement {
+    imports {
+        // 2. Dùng bản M4 (Milestone 4) - Bản này rất ổn định với Boot 3.4.x
+        mavenBom("org.springframework.ai:spring-ai-bom:1.0.0-M4")
+    }
 }
 
 dependencies {
@@ -25,7 +33,12 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-	//fly way
+    // --- SPRING AI
+    implementation("org.springframework.ai:spring-ai-openai-spring-boot-starter")
+    implementation("org.springframework.ai:spring-ai-pgvector-store-spring-boot-starter")
+    implementation("org.springframework.ai:spring-ai-transformers-spring-boot-starter")
+
+    //fly way
 	implementation("org.flywaydb:flyway-core:11.10.0")
 	implementation("org.flywaydb:flyway-database-postgresql:11.10.0")
 
@@ -71,7 +84,7 @@ dependencies {
 	testImplementation("org.springframework.security:spring-security-test")
 
     // Email
-    implementation("org.springframework.boot:spring-boot-starter-mail:3.5.6")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 
 	//  Thư viện để đọc và ghi file Microsoft Excel
 	implementation("org.apache.poi:poi:5.2.5")

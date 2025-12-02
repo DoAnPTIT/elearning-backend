@@ -6,6 +6,7 @@ import com.doanptit.elearing_backend_service.dto.res.AdminCourseDetailDto;
 import com.doanptit.elearing_backend_service.dto.res.AdminCourseListDto;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
+import com.doanptit.elearing_backend_service.event.CourseContentUpdatedEvent;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.AdminCourseMapper;
@@ -18,6 +19,7 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class AdminCourseServiceImpl implements AdminCourseService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AdminCourseMapper adminCourseMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -173,6 +176,11 @@ public class AdminCourseServiceImpl implements AdminCourseService {
                         : null
         );
         Course savedCourse = courseRepository.save(course);
+
+        if (savedCourse.getStatus() == CourseStatus.ACTIVE) { // (Hoặc APPROVED)
+            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
+        }
+
         return adminCourseMapper.toCourseDetailDto(savedCourse);
     }
 
