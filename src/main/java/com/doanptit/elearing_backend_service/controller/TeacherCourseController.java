@@ -10,6 +10,7 @@ import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/teacher/courses")
 @RequiredArgsConstructor
@@ -182,7 +184,7 @@ public class TeacherCourseController {
             @PathVariable Long courseId,
             @Valid @RequestBody UpdateCourseRequestDto request,
             Authentication authentication) {
-
+        log.info("api update course");
         AdminCourseDetailDto updatedCourse = courseService.updateCourse(courseId, request, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(updatedCourse));
     }

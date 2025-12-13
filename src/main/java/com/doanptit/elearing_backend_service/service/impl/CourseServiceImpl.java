@@ -283,6 +283,28 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
+    @Transactional
+    public AdminCourseDetailDto updateCourse(Long courseId, UpdateCourseRequestDto request, String teacherEmail) {
+        Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
+
+        course.setTitle(request.getTitle());
+        course.setDescription(request.getDescription());
+        course.setObjectives(request.getObjectives());
+        course.setTargetAudience(request.getTargetAudience());
+        course.setCategory(request.getCategory());
+
+        Course savedCourse = courseRepository.save(course);
+
+        // >>>> LOGIC MỚI: Chỉ train nếu đang ACTIVE <<<<
+        // (Nếu đang DRAFT mà sửa thì kệ, chưa cần học)
+//        if (savedCourse.getStatus() == CourseStatus.ACTIVE) {
+//            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
+//        }
+
+        return adminCourseMapper.toCourseDetailDto(savedCourse);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail) {
         Course course = courseRepository.findById(courseId)
@@ -343,6 +365,33 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
+    public CourseDetailDto getPublicCourseDetails(Long courseId, Authentication authentication) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        // 1. Khóa học phải ACTIVE (của bạn)
+        if (course.getStatus() != CourseStatus.ACTIVE) {
+            throw new AppException(ErrorCode.COURSE_NOT_FOUND);
+        }
+
+        // 2. Logic kiểm tra Student
+        // (Chúng ta mặc định người gọi API này là Student,
+        // vì Admin/Teacher sẽ gọi API riêng của họ)
+        String studentEmail = authentication.getName();
+        EnrollmentStatus status = enrollmentRepository.findEnrollmentStatus(studentEmail, courseId)
+                .orElse(null); // (null nếu chưa đăng ký)
+
+        if (status == EnrollmentStatus.APPROVED) {
+            // Đã được duyệt -> Trả về DTO
+            return publicCourseMapper.toCourseDetailDto(course);
+        }
+
+        // Nếu không (chưa đăng ký, PENDING, REJECTED) -> Báo lỗi
+        throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PagedResponse<CourseListDto> searchCourses(String q, int page, int size, String... sort) {
 
         Pageable pageable = createPageable(page, size, sort, "createdOn");
@@ -373,49 +422,6 @@ public class CourseServiceImpl implements CourseService {
                 dtoPage.getContent(), dtoPage.getNumber(), dtoPage.getSize(),
                 dtoPage.getTotalElements(), dtoPage.getTotalPages()
         );
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public CourseDetailDto getPublicCourseDetails(Long courseId, Authentication authentication) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
-
-        // 1. Khóa học phải ACTIVE (đã được duyệt và xuất bản)
-        if (course.getStatus() != CourseStatus.ACTIVE) {
-            throw new AppException(ErrorCode.COURSE_NOT_FOUND);
-        }
-
-        // 2. Trả về thông tin khóa học cho tất cả user (dù chưa enroll)
-        // Điều này cho phép user xem preview để quyết định có enroll hay không
-        // Kiểm tra enrollment chỉ cần thiết khi vào học bài (API lessons)
-        return publicCourseMapper.toCourseDetailDto(course);
-    }
-
-        // Nếu không (chưa đăng ký, PENDING, REJECTED) -> Báo lỗi
-        throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
-    }
-
-    @Override
-    @Transactional
-    public AdminCourseDetailDto updateCourse(Long courseId, UpdateCourseRequestDto request, String teacherEmail) {
-        Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
-
-        course.setTitle(request.getTitle());
-        course.setDescription(request.getDescription());
-        course.setObjectives(request.getObjectives());
-        course.setTargetAudience(request.getTargetAudience());
-        course.setCategory(request.getCategory());
-
-        Course savedCourse = courseRepository.save(course);
-
-        // >>>> LOGIC MỚI: Chỉ train nếu đang ACTIVE <<<<
-        // (Nếu đang DRAFT mà sửa thì kệ, chưa cần học)
-        if (savedCourse.getStatus() == CourseStatus.ACTIVE) {
-            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
-        }
-
-        return adminCourseMapper.toCourseDetailDto(savedCourse);
     }
 
     private Pageable createPageable(int page, int size, String[] sort, String defaultSortField) {
