@@ -1,16 +1,14 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
-import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
+import com.doanptit.elearing_backend_service.dto.req.*;
 import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.enums.ExamType;
 import com.doanptit.elearing_backend_service.enums.LessonType;
+import com.doanptit.elearing_backend_service.event.CourseContentUpdatedEvent;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.*;
@@ -21,6 +19,7 @@ import com.doanptit.elearing_backend_service.service.S3Service;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +50,7 @@ public class CourseServiceImpl implements CourseService {
     private final CourseMapper courseMapper;
     private final AdminCourseMapper adminCourseMapper;
     private final PublicCourseMapper publicCourseMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -90,7 +90,8 @@ public class CourseServiceImpl implements CourseService {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
         checkCourseAuthorship(section.getCourse(), teacherEmail);
-        
+
+
         // If lesson type is QUIZ or ASSIGNMENT, create an Exam instead
         if (request.getLessonType() == LessonType.QUIZ || request.getLessonType() == LessonType.ASSIGNMENT) {
             Exam exam = new Exam();
@@ -100,7 +101,7 @@ public class CourseServiceImpl implements CourseService {
             exam.setSection(section);
             exam.setActive(true);
             Exam savedExam = examRepository.save(exam);
-            
+
             // Return as LessonResponse (convert exam to lesson response format)
             LessonResponse response = new LessonResponse();
             response.setId(savedExam.getId());
@@ -108,14 +109,22 @@ public class CourseServiceImpl implements CourseService {
             response.setLessonType(request.getLessonType());
             return response;
         }
-        
+
         // Normal lesson creation for VIDEO and ARTICLE
         Lesson lesson = lessonMapper.toEntity(request);
         if (request.getLessonType() == LessonType.ARTICLE) {
             lesson.setArticleContent(request.getArticleContent());
         }
         lesson.setSection(section);
+
         Lesson savedLesson = lessonRepository.save(lesson);
+
+        // >>>> LOGIC MỚI: Chỉ train AI nếu khóa học đang ACTIVE <<<<
+        Course course = section.getCourse();
+        if (course.getStatus() == CourseStatus.ACTIVE) {
+            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, course.getId()));
+        }
+
         return lessonMapper.toResponseDto(savedLesson);
     }
 
@@ -133,6 +142,11 @@ public class CourseServiceImpl implements CourseService {
         String videoUrl = s3Service.uploadFile(file, "lesson-videos");
         lesson.setVideoUrl(videoUrl);
         lessonRepository.save(lesson);
+
+        Course course = lesson.getSection().getCourse();
+        if (course.getStatus() == CourseStatus.ACTIVE) {
+            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, course.getId()));
+        }
         return videoUrl;
     }
 
@@ -237,15 +251,57 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort) {
-        // Dùng hàm phụ (helper method) ở cuối file này
+    public PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(
+            String teacherEmail, int page, int size,
+            String title, CourseStatus status, CourseCategory category, // <-- Tham số mới
+            String... sort) {
+
         Pageable pageable = createPageable(page, size, sort, "id");
-        Page<Course> coursePage = courseRepository.findByAuthor_Email(teacherEmail, pageable);
+
+        Specification<Course> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Điều kiện CỨNG: Chỉ lấy của Teacher này
+            predicates.add(cb.equal(root.get("author").get("email"), teacherEmail));
+
+            // Lọc động (Mới)
+            if (status != null) predicates.add(cb.equal(root.get("status"), status));
+            if (category != null) predicates.add(cb.equal(root.get("category"), category));
+            if (title != null && !title.isBlank())
+                predicates.add(cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Course> coursePage = courseRepository.findAll(spec, pageable);
         Page<AdminCourseListDto> dtoPage = coursePage.map(adminCourseMapper::toCourseListDto);
+
         return new PagedResponse<>(
                 dtoPage.getContent(), dtoPage.getNumber(), dtoPage.getSize(),
                 dtoPage.getTotalElements(), dtoPage.getTotalPages()
         );
+    }
+
+    @Override
+    @Transactional
+    public AdminCourseDetailDto updateCourse(Long courseId, UpdateCourseRequestDto request, String teacherEmail) {
+        Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
+
+        course.setTitle(request.getTitle());
+        course.setDescription(request.getDescription());
+        course.setObjectives(request.getObjectives());
+        course.setTargetAudience(request.getTargetAudience());
+        course.setCategory(request.getCategory());
+
+        Course savedCourse = courseRepository.save(course);
+
+        // >>>> LOGIC MỚI: Chỉ train nếu đang ACTIVE <<<<
+        // (Nếu đang DRAFT mà sửa thì kệ, chưa cần học)
+//        if (savedCourse.getStatus() == CourseStatus.ACTIVE) {
+//            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
+//        }
+
+        return adminCourseMapper.toCourseDetailDto(savedCourse);
     }
 
     @Override
@@ -260,7 +316,9 @@ public class CourseServiceImpl implements CourseService {
     private Course findCourseByIdAndAuthor(Long courseId, String teacherEmail) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
-        checkCourseAuthorship(course, teacherEmail);
+        if (!course.getAuthor().getEmail().equals(teacherEmail)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
         return course;
     }
 
@@ -307,6 +365,33 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
+    public CourseDetailDto getPublicCourseDetails(Long courseId, Authentication authentication) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        // 1. Khóa học phải ACTIVE (của bạn)
+        if (course.getStatus() != CourseStatus.ACTIVE) {
+            throw new AppException(ErrorCode.COURSE_NOT_FOUND);
+        }
+
+        // 2. Logic kiểm tra Student
+        // (Chúng ta mặc định người gọi API này là Student,
+        // vì Admin/Teacher sẽ gọi API riêng của họ)
+        String studentEmail = authentication.getName();
+        EnrollmentStatus status = enrollmentRepository.findEnrollmentStatus(studentEmail, courseId)
+                .orElse(null); // (null nếu chưa đăng ký)
+
+        if (status == EnrollmentStatus.APPROVED) {
+            // Đã được duyệt -> Trả về DTO
+            return publicCourseMapper.toCourseDetailDto(course);
+        }
+
+        // Nếu không (chưa đăng ký, PENDING, REJECTED) -> Báo lỗi
+        throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PagedResponse<CourseListDto> searchCourses(String q, int page, int size, String... sort) {
 
         Pageable pageable = createPageable(page, size, sort, "createdOn");
@@ -337,23 +422,6 @@ public class CourseServiceImpl implements CourseService {
                 dtoPage.getContent(), dtoPage.getNumber(), dtoPage.getSize(),
                 dtoPage.getTotalElements(), dtoPage.getTotalPages()
         );
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public CourseDetailDto getPublicCourseDetails(Long courseId, Authentication authentication) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
-
-        // 1. Khóa học phải ACTIVE (đã được duyệt và xuất bản)
-        if (course.getStatus() != CourseStatus.ACTIVE) {
-            throw new AppException(ErrorCode.COURSE_NOT_FOUND);
-        }
-
-        // 2. Trả về thông tin khóa học cho tất cả user (dù chưa enroll)
-        // Điều này cho phép user xem preview để quyết định có enroll hay không
-        // Kiểm tra enrollment chỉ cần thiết khi vào học bài (API lessons)
-        return publicCourseMapper.toCourseDetailDto(course);
     }
 
     private Pageable createPageable(int page, int size, String[] sort, String defaultSortField) {

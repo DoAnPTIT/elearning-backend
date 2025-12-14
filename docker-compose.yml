@@ -41,7 +41,7 @@ services:
       - elearning-backend-service-network
 
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg16
     environment:
       - POSTGRES_DB=elearing-backend-service
       - POSTGRES_USER=elearningservice
