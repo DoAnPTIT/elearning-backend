@@ -15,6 +15,7 @@ import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
 import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
 import com.doanptit.elearing_backend_service.service.AdminCourseService;
+import com.doanptit.elearing_backend_service.service.even.NotificationEvent;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -179,6 +180,22 @@ public class AdminCourseServiceImpl implements AdminCourseService {
 
         if (savedCourse.getStatus() == CourseStatus.ACTIVE) { // (Hoặc APPROVED)
             eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
+        }
+
+        if (savedCourse.getStatus()==CourseStatus.ACTIVE) {
+            eventPublisher.publishEvent(new NotificationEvent(this,
+                    course.getAuthor().getEmail(),
+                            "Yêu cầu gửi duyệt khóa học của bạn đã được chấp thuận",
+                    "Admin đã chấp nhận yêu cầu phê duyệt khóa học " + course.getTitle() + " của bạn",
+                    "/courses/" + savedCourse.getId()
+            ));
+        }else{
+            eventPublisher.publishEvent(new NotificationEvent(this,
+                    course.getAuthor().getEmail(),
+                    "Yêu cầu gửi duyệt khóa học của bạn không được chấp thuận",
+                    "Admin không chấp nhận yêu cầu phê duyệt khóa học " + course.getTitle() + " của bạn",
+                    "/courses/" + savedCourse.getId()
+            ));
         }
 
         return adminCourseMapper.toCourseDetailDto(savedCourse);

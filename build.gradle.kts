@@ -93,6 +93,8 @@ dependencies {
     // Thumbnailator (dùng để resize ảnh về chuẩn 256x256)
     implementation("net.coobird:thumbnailator:0.4.20")
 
+	implementation("org.springframework.boot:spring-boot-starter-websocket")
+
 }
 
 tasks.withType<Test> {

@@ -16,7 +16,9 @@ import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
 import com.doanptit.elearing_backend_service.repository.LessonRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
+import com.doanptit.elearing_backend_service.service.even.NotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +42,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final LessonRepository lessonRepository;
 
     private static final String COMPLETED_LESSON_DELIMITER = ",";
@@ -69,6 +72,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .build();
 
         enrollmentRepository.save(newEnrollment);
+        String teacherEmail = course.getAuthor().getEmail();
+        eventPublisher.publishEvent(new NotificationEvent(this,
+                teacherEmail,
+                "Học viên đăng ký khóa học",
+                "Học viên "+  newEnrollment.getUser().getFirstname()+ " "+newEnrollment.getUser().getLastname()+ " đã yêu cầu tham gia khóa học: " + newEnrollment.getCourse().getTitle(),
+                "/courses/" + newEnrollment.getCourse().getId()
+        ));
     }
 
     @Override
@@ -82,6 +92,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new NotificationEvent(this,
+                enrollment.getUser().getEmail(),
+                "Đăng ký thành công",
+                "Giảng viên đã chấp nhận yêu cầu tham gia khóa học: " + enrollment.getCourse().getTitle(),
+                "/courses/" + enrollment.getCourse().getId()
+        ));
     }
 
     @Override
@@ -95,6 +112,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         enrollment.setStatus(EnrollmentStatus.REJECTED);
         enrollmentRepository.save(enrollment);
+
+        eventPublisher.publishEvent(new NotificationEvent(this,
+                enrollment.getUser().getEmail(),
+                "Yêu cầu đăng ký khóa học không được chấp thuận",
+                "Giảng viên đã từ chối yêu cầu tham gia khóa học của bạn: " + enrollment.getCourse().getTitle(),
+                ""
+        ));
     }
 
     @Override
