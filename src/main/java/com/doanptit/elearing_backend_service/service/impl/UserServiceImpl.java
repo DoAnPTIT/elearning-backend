@@ -6,14 +6,19 @@ import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.AdminUserListDto;
 import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
+import com.doanptit.elearing_backend_service.dto.res.StudentEnrollmentSummaryDto;
 import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.enums.Role;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.UserMapper;
+import com.doanptit.elearing_backend_service.model.Course;
+import com.doanptit.elearing_backend_service.model.Enrollment;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
+import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
+import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.service.S3Service;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.transaction.Transactional;
@@ -33,10 +38,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -47,6 +54,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final S3Service s3Service;
     private final com.doanptit.elearing_backend_service.repository.CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     @Override
     public UserResponseDto createNewUserByAdmin(UserRequestDto request) {
@@ -80,7 +88,37 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto getUserById(Integer id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toUserResponseDto(user);
+        
+        UserResponseDto dto = userMapper.toUserResponseDto(user);
+        
+        // Add statistics based on role
+        if (user.getRole() == Role.TEACHER) {
+            // Count courses authored by this teacher
+            long courseCount = courseRepository.findByAuthor_Email(user.getEmail(), Pageable.unpaged())
+                    .getTotalElements();
+            dto.setCourseCount(courseCount);
+            
+            // Count total enrollments in teacher's courses
+            long totalEnrollments = courseRepository.findByAuthor_Email(user.getEmail(), Pageable.unpaged())
+                    .getContent()
+                    .stream()
+                    .mapToLong(course -> enrollmentRepository.findByCourse_Id(course.getId(), Pageable.unpaged()).getTotalElements())
+                    .sum();
+            dto.setStudentCount(totalEnrollments);
+            
+            // Rating can be calculated later if needed
+            dto.setRating(0.0);
+        } else if (user.getRole() == Role.STUDENT) {
+            StudentLearningSnapshot snapshot = computeStudentLearningSnapshot(user);
+            dto.setCourseNames(snapshot.getCourseNames());
+            dto.setEnrolledCourses((long) snapshot.getEnrolledCount());
+            dto.setCompletedCourses((long) snapshot.getCompletedCount());
+            dto.setProgress(snapshot.getAverageProgress());
+            dto.setLastActivity(snapshot.getLastActivity());
+            dto.setEnrollments(snapshot.getEnrollmentSummaries());
+        }
+        
+        return dto;
     }
 
     @Override
@@ -170,18 +208,14 @@ public class UserServiceImpl implements UserService {
             dto.setRating(0.0);
         }
         
-        // For students, get approved course names
-        if (user.getRole() == Role.STUDENT && user.getEnrollments() != null) {
-            List<String> approvedCourseNames = user.getEnrollments().stream()
-                    .filter(enrollment -> enrollment.getStatus() == com.doanptit.elearing_backend_service.enums.EnrollmentStatus.APPROVED)
-                    .map(enrollment -> enrollment.getCourse().getTitle())
-                    .toList();
-            dto.setCourseNames(approvedCourseNames);
-            dto.setEnrolledCourses(approvedCourseNames.size());
-            
-            // TODO: Calculate completed courses and progress
-            dto.setCompletedCourses(0);
-            dto.setProgress(0.0);
+        // For students, derive enrollment stats/progress
+        if (user.getRole() == Role.STUDENT) {
+            StudentLearningSnapshot snapshot = computeStudentLearningSnapshot(user);
+            dto.setCourseNames(snapshot.getCourseNames());
+            dto.setEnrolledCourses(snapshot.getEnrolledCount());
+            dto.setCompletedCourses(snapshot.getCompletedCount());
+            dto.setProgress(snapshot.getAverageProgress());
+            dto.setLastActivity(snapshot.getLastActivity());
         }
         
         return dto;
@@ -376,14 +410,151 @@ public class UserServiceImpl implements UserService {
 
         try {
             String imageUrl = s3Service.uploadUserImage(userId, file);
-            user.setImage(imageUrl);
+            String versionedImageUrl = imageUrl + "?t=" + System.currentTimeMillis();
+            user.setImage(versionedImageUrl);
             userRepository.save(user);
 
-            UploadImageResponse response = new UploadImageResponse(imageUrl);
+            UploadImageResponse response = new UploadImageResponse(versionedImageUrl);
             return ApiResponse.success("Tải ảnh thành công", response);
 
         } catch (IllegalArgumentException e) {
             throw new AppException(ErrorCode.FILE_INVALID_TYPE);
+        }
+    }
+
+        private StudentLearningSnapshot computeStudentLearningSnapshot(User user) {
+        if (user == null) {
+            return StudentLearningSnapshot.empty();
+        }
+
+        List<Enrollment> enrollments = Optional.ofNullable(user.getEnrollments())
+            .orElse(Collections.emptyList());
+
+        List<Enrollment> approvedEnrollments = enrollments.stream()
+            .filter(enrollment -> enrollment.getStatus() == EnrollmentStatus.APPROVED)
+            .toList();
+
+        List<String> courseNames = approvedEnrollments.stream()
+            .map(Enrollment::getCourse)
+            .filter(Objects::nonNull)
+            .map(Course::getTitle)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+        int enrolledCount = approvedEnrollments.size();
+
+        int completedCourses = (int) approvedEnrollments.stream()
+            .map(Enrollment::getProgress)
+            .filter(Objects::nonNull)
+            .filter(progress -> progress >= 99.9f)
+            .count();
+
+        double averageProgress = approvedEnrollments.stream()
+            .map(Enrollment::getProgress)
+            .filter(Objects::nonNull)
+            .mapToDouble(Float::doubleValue)
+            .average()
+            .orElse(0.0d);
+
+        String lastActivity = approvedEnrollments.stream()
+            .map(Enrollment::getUpdatedOn)
+            .filter(Objects::nonNull)
+            .max(LocalDateTime::compareTo)
+            .map(LocalDateTime::toString)
+            .orElse(null);
+
+        List<StudentEnrollmentSummaryDto> enrollmentSummaries = approvedEnrollments.stream()
+            .map(this::mapStudentEnrollmentSummary)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+        return new StudentLearningSnapshot(
+            courseNames,
+            enrolledCount,
+            completedCourses,
+            averageProgress,
+            lastActivity,
+            enrollmentSummaries
+        );
+        }
+
+    private StudentEnrollmentSummaryDto mapStudentEnrollmentSummary(Enrollment enrollment) {
+        if (enrollment == null) {
+            return null;
+        }
+
+        Course course = enrollment.getCourse();
+        String teacherName = Optional.ofNullable(course)
+                .map(Course::getAuthor)
+                .map(author -> (Optional.ofNullable(author.getFirstname()).orElse("") + " "
+                        + Optional.ofNullable(author.getLastname()).orElse("")).trim())
+                .filter(name -> !name.isBlank())
+                .orElse(null);
+
+        String lastActivity = Optional.ofNullable(enrollment.getUpdatedOn())
+                .map(LocalDateTime::toString)
+                .orElse(null);
+
+        return StudentEnrollmentSummaryDto.builder()
+                .enrollmentId(enrollment.getId())
+                .courseId(course != null ? course.getId() : null)
+                .courseTitle(course != null ? course.getTitle() : null)
+                .courseImage(course != null ? course.getImage() : null)
+                .progress(enrollment.getProgress())
+                .status(enrollment.getStatus() != null ? enrollment.getStatus().name() : null)
+                .teacherName(teacherName)
+                .lastActivity(lastActivity)
+                .build();
+    }
+
+    private static class StudentLearningSnapshot {
+        private final List<String> courseNames;
+        private final int enrolledCount;
+        private final int completedCount;
+        private final double averageProgress;
+        private final String lastActivity;
+        private final List<StudentEnrollmentSummaryDto> enrollmentSummaries;
+
+        private StudentLearningSnapshot(List<String> courseNames,
+                                        int enrolledCount,
+                                        int completedCount,
+                                        double averageProgress,
+                                        String lastActivity,
+                                        List<StudentEnrollmentSummaryDto> enrollmentSummaries) {
+            this.courseNames = courseNames;
+            this.enrolledCount = enrolledCount;
+            this.completedCount = completedCount;
+            this.averageProgress = averageProgress;
+            this.lastActivity = lastActivity;
+            this.enrollmentSummaries = enrollmentSummaries;
+        }
+
+        private static StudentLearningSnapshot empty() {
+            return new StudentLearningSnapshot(Collections.emptyList(), 0, 0, 0.0d, null, Collections.emptyList());
+        }
+
+        public List<String> getCourseNames() {
+            return courseNames;
+        }
+
+        public int getEnrolledCount() {
+            return enrolledCount;
+        }
+
+        public int getCompletedCount() {
+            return completedCount;
+        }
+
+        public double getAverageProgress() {
+            return averageProgress;
+        }
+
+        public String getLastActivity() {
+            return lastActivity;
+        }
+
+        public List<StudentEnrollmentSummaryDto> getEnrollmentSummaries() {
+            return enrollmentSummaries;
         }
     }
 }

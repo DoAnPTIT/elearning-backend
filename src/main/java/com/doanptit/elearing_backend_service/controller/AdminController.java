@@ -97,4 +97,10 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(updatedCourse));
     }
 
+    @DeleteMapping("/courses/{id}")
+    public ResponseEntity<ApiResponse<String>> deleteCourse(@PathVariable Long id) {
+        adminCourseService.deleteCourse(id);
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa khóa học thành công."));
+    }
+
 }

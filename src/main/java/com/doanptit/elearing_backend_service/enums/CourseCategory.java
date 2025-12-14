@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum CourseCategory {
@@ -34,5 +35,26 @@ public enum CourseCategory {
     @JsonValue
     public String getVietnameseName() {
         return vietnameseName;
+    }
+
+    @JsonCreator
+    public static CourseCategory fromString(String value) {
+        if (value == null) {
+            return null;
+        }
+        
+        // Try to match by Vietnamese name first
+        for (CourseCategory category : CourseCategory.values()) {
+            if (category.vietnameseName.equalsIgnoreCase(value)) {
+                return category;
+            }
+        }
+        
+        // Fallback to enum name
+        try {
+            return CourseCategory.valueOf(value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid category: " + value);
+        }
     }
 }

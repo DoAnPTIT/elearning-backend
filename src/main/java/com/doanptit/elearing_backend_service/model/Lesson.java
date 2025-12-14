@@ -21,14 +21,17 @@ public class Lesson extends BaseEntity {
     private Boolean active = true;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "lesson_type")
     private LessonType lessonType;
 
+    @Column(name = "video_url")
     private String videoUrl;
 
+    @Column(name = "duration")
     private Long duration;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "article_content", columnDefinition = "TEXT")
     private String articleContent;
 
     @Column(name = "lesson_order")

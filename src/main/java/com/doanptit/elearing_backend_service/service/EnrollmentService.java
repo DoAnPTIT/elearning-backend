@@ -1,6 +1,8 @@
 package com.doanptit.elearing_backend_service.service;
 
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
+import com.doanptit.elearing_backend_service.dto.req.LessonProgressRequest;
+import com.doanptit.elearing_backend_service.dto.res.CourseProgressResponse;
 
 public interface EnrollmentService {
     /**
@@ -26,4 +28,8 @@ public interface EnrollmentService {
      * Return null nếu chưa enroll
      */
     Object getEnrollmentForCourse(Long courseId, String studentEmail);
+
+    CourseProgressResponse updateLessonProgress(Long lessonId, LessonProgressRequest request, String studentEmail);
+
+    CourseProgressResponse getCourseProgress(Long courseId, String studentEmail);
 }

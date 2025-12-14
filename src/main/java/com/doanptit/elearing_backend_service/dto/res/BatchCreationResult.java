@@ -10,10 +10,15 @@ import java.util.List;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
 public class BatchCreationResult {
     private int successCount = 0;
     private int failureCount = 0;
     private List<String> errorMessages = new ArrayList<>();
+    
+    public BatchCreationResult(int successCount, int failureCount, List<String> errorMessages) {
+        this.successCount = successCount;
+        this.failureCount = failureCount;
+        this.errorMessages = errorMessages != null ? errorMessages : new ArrayList<>();
+    }
 }

@@ -20,4 +20,6 @@ public class CreateLessonRequestDto {
 
     @JsonProperty("lesson_order")
     private Integer lessonOrder;
+
+    private Integer duration; // Duration in seconds
 }

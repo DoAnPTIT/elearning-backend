@@ -1,15 +1,19 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
+import com.doanptit.elearing_backend_service.dto.req.LessonProgressRequest;
+import com.doanptit.elearing_backend_service.dto.res.CourseProgressResponse;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.model.Course;
 import com.doanptit.elearing_backend_service.model.Enrollment;
+import com.doanptit.elearing_backend_service.model.Lesson;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
 import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
+import com.doanptit.elearing_backend_service.repository.LessonRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +24,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +40,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final LessonRepository lessonRepository;
+
+    private static final String COMPLETED_LESSON_DELIMITER = ",";
 
     @Override
     @Transactional
@@ -208,6 +219,138 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         
         Enrollment enrollment = enrollmentOpt.get();
         return mapEnrollmentToDto(enrollment);
+    }
+
+    @Override
+    @Transactional
+    public CourseProgressResponse updateLessonProgress(Long lessonId, LessonProgressRequest request, String studentEmail) {
+        if (request == null) {
+            request = new LessonProgressRequest();
+            request.setCompleted(true);
+        }
+
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+
+        Long courseId = lesson.getSection().getCourse().getId();
+
+        Enrollment enrollment = enrollmentRepository
+                .findByUser_EmailAndCourse_Id(studentEmail, courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENROLLMENT_NOT_FOUND));
+
+        if (enrollment.getStatus() != EnrollmentStatus.APPROVED) {
+            throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
+        }
+
+        Float progressValue = request.getProgress();
+        Boolean completedFlag = request.getCompleted();
+
+        boolean markCompleted = Boolean.TRUE.equals(completedFlag) ||
+                (progressValue != null && progressValue >= 100f);
+
+        boolean shouldRemoveCompletion = Boolean.FALSE.equals(completedFlag) ||
+                (progressValue != null && progressValue < 100f);
+
+        Set<Long> completedLessons = extractCompletedLessonIds(enrollment);
+
+        if (markCompleted) {
+            completedLessons.add(lessonId);
+        } else if (shouldRemoveCompletion) {
+            completedLessons.remove(lessonId);
+        }
+
+        return synchronizeEnrollmentProgress(enrollment, completedLessons);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CourseProgressResponse getCourseProgress(Long courseId, String studentEmail) {
+        Enrollment enrollment = enrollmentRepository
+                .findByUser_EmailAndCourse_Id(studentEmail, courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENROLLMENT_NOT_FOUND));
+
+        if (enrollment.getStatus() != EnrollmentStatus.APPROVED) {
+            throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
+        }
+
+        Set<Long> completedLessons = extractCompletedLessonIds(enrollment);
+        long totalLessons = lessonRepository.countBySection_Course_Id(courseId);
+        float progressPercent = calculateProgressPercent(totalLessons, completedLessons.size());
+
+        return mapCourseProgressResponse(enrollment, totalLessons, completedLessons, progressPercent);
+    }
+
+    private CourseProgressResponse synchronizeEnrollmentProgress(Enrollment enrollment,
+                                                                 Set<Long> completedLessonIds) {
+        Long courseId = enrollment.getCourse().getId();
+        long totalLessons = lessonRepository.countBySection_Course_Id(courseId);
+
+        float progressPercent = calculateProgressPercent(totalLessons, completedLessonIds.size());
+
+        enrollment.setProgress(progressPercent);
+        enrollment.setCompletedLessons(serializeCompletedLessonIds(completedLessonIds));
+        Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+
+        return mapCourseProgressResponse(savedEnrollment, totalLessons, completedLessonIds, progressPercent);
+    }
+
+    private float calculateProgressPercent(long totalLessons, int completedLessons) {
+        if (totalLessons <= 0) {
+            return 0f;
+        }
+        return (completedLessons * 100f) / totalLessons;
+    }
+
+    private CourseProgressResponse mapCourseProgressResponse(Enrollment enrollment,
+                                                             long totalLessons,
+                                                             Set<Long> completedLessonIds,
+                                                             float progressPercent) {
+        List<Long> completedLessonIdList = completedLessonIds.stream()
+                .filter(Objects::nonNull)
+                .sorted()
+                .collect(Collectors.toList());
+
+        return CourseProgressResponse.builder()
+                .courseId(enrollment.getCourse().getId())
+                .enrollmentId(enrollment.getId())
+                .totalLessons((int) totalLessons)
+                .completedLessons(completedLessonIdList.size())
+                .progress(progressPercent)
+                .completedLessonIds(completedLessonIdList)
+                .updatedAt(enrollment.getUpdatedOn())
+                .build();
+    }
+
+    private Set<Long> extractCompletedLessonIds(Enrollment enrollment) {
+        String stored = enrollment.getCompletedLessons();
+        if (stored == null || stored.isBlank()) {
+            return new LinkedHashSet<>();
+        }
+
+        return Arrays.stream(stored.split(COMPLETED_LESSON_DELIMITER))
+                .map(String::trim)
+                .filter(token -> !token.isEmpty())
+                .map(token -> {
+                    try {
+                        return Long.valueOf(token);
+                    } catch (NumberFormatException ex) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private String serializeCompletedLessonIds(Set<Long> lessonIds) {
+        if (lessonIds == null || lessonIds.isEmpty()) {
+            return null;
+        }
+
+        return lessonIds.stream()
+                .filter(Objects::nonNull)
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(COMPLETED_LESSON_DELIMITER));
     }
 
     private Enrollment findEnrollmentAndCheckAuthorship(Long enrollmentId, String teacherEmail) {

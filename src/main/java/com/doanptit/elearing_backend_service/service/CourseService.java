@@ -17,8 +17,10 @@ public interface CourseService {
     SectionResponse createSection(Long courseId, CreateSectionRequestDto request, String teacherEmail);
     LessonResponse createLesson(Long sectionId, CreateLessonRequestDto request, String teacherEmail);
     String uploadLessonVideo(Long lessonId, MultipartFile file, String teacherEmail);
+    String uploadLessonDocument(Long lessonId, MultipartFile file, String teacherEmail);
     ExamResponse createExam(Long sectionId, CreateExamRequestDto request, String teacherEmail);
     void submitCourseForReview(Long courseId, String teacherEmail);
+        void hideCourse(Long courseId, String teacherEmail);
 
     PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort);
     AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail);

@@ -21,6 +21,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     // Lấy danh sách enrollment của một course (cho Teacher)
     Page<Enrollment> findByCourse_Id(Long courseId, Pageable pageable);
     Page<Enrollment> findByCourse_IdAndStatus(Long courseId, EnrollmentStatus status, Pageable pageable);
+    void deleteByCourse_Id(Long courseId);
     
     // Lấy danh sách enrollment của một student
     Page<Enrollment> findByUser_Email(String email, Pageable pageable);

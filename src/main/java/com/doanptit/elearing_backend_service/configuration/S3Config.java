@@ -43,9 +43,13 @@ public class S3Config {
                         .build())
                 .build();
 
-        try {
-            s3.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
-        } catch (Exception ignored) {
+        // Create all required buckets for MinIO
+        String[] buckets = {bucketName, "course-images", "lesson-videos", "lesson-documents"};
+        for (String bucket : buckets) {
+            try {
+                s3.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
+            } catch (Exception ignored) {
+            }
         }
 
         return s3;

@@ -98,6 +98,16 @@ public class TeacherCourseController {
         return ResponseEntity.ok(ApiResponse.success(videoUrl));
     }
 
+    // Upload tài liệu (PDF) cho bài giảng ARTICLE
+    @PostMapping(value = "/lessons/upload/{lessonId}/document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<String>> uploadLessonDocument(
+            @PathVariable Long lessonId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        String documentUrl = courseService.uploadLessonDocument(lessonId, file, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(documentUrl));
+    }
+
     // Bước 4: Tạo bài kiểm tra trong chương
     @PostMapping("/sections/{sectionId}/exams")
     public ResponseEntity<ApiResponse<ExamResponse>> createExam(
@@ -115,6 +125,14 @@ public class TeacherCourseController {
             Authentication authentication) {
         courseService.submitCourseForReview(courseId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã gửi khóa học thành công, vui lòng đợi thông báo từ email trong quá trình chúng tôi phê duyệt"));
+    }
+
+    @PatchMapping("/{courseId}/hide")
+    public ResponseEntity<ApiResponse<String>> hideCourse(
+            @PathVariable Long courseId,
+            Authentication authentication) {
+        courseService.hideCourse(courseId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Khóa học đã được chuyển sang trạng thái ẩn."));
     }
 
     // --- API : LẤY DANH SÁCH ENROLLMENT CỦA KHÓA HỌC ---

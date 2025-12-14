@@ -17,6 +17,8 @@ public class AdminCourseListDto {
     private Integer sectionCount;
     private Integer totalStudents;
     private String image;
+    private Long totalDuration; // Total duration in minutes
+    private Integer totalLessons; // Total number of lessons
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdOn;

@@ -14,4 +14,5 @@ public interface AdminCourseService {
     );
     AdminCourseDetailDto getCourseDetails(Long courseId);
     AdminCourseDetailDto updateCourseStatus(Long courseId, AdminUpdateCourseStatusDto request);
+    void deleteCourse(Long courseId);
 }

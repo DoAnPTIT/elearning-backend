@@ -12,6 +12,7 @@ import com.doanptit.elearing_backend_service.mapper.AdminCourseMapper;
 import com.doanptit.elearing_backend_service.model.Course;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
+import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
 import com.doanptit.elearing_backend_service.service.AdminCourseService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -30,6 +31,7 @@ import java.util.List;
 public class AdminCourseServiceImpl implements AdminCourseService {
 
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final AdminCourseMapper adminCourseMapper;
 
     @Override
@@ -172,5 +174,15 @@ public class AdminCourseServiceImpl implements AdminCourseService {
         );
         Course savedCourse = courseRepository.save(course);
         return adminCourseMapper.toCourseDetailDto(savedCourse);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCourse(Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        enrollmentRepository.deleteByCourse_Id(courseId);
+        courseRepository.delete(course);
     }
 }

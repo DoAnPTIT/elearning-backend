@@ -2,6 +2,8 @@ package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
+import com.doanptit.elearing_backend_service.dto.req.LessonProgressRequest;
+import com.doanptit.elearing_backend_service.dto.res.CourseProgressResponse;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,4 +35,30 @@ public class StudentController {
 
         return ResponseEntity.ok(ApiResponse.success(enrollments));
     }
+
+        @PatchMapping("/lessons/{lessonId}/progress")
+        public ResponseEntity<ApiResponse<CourseProgressResponse>> updateLessonProgress(
+            @PathVariable Long lessonId,
+            @RequestBody(required = false) LessonProgressRequest request,
+            Authentication authentication) {
+
+        CourseProgressResponse response = enrollmentService.updateLessonProgress(
+            lessonId,
+            request,
+            authentication.getName());
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+        }
+
+        @GetMapping("/courses/{courseId}/progress")
+        public ResponseEntity<ApiResponse<CourseProgressResponse>> getCourseProgress(
+            @PathVariable Long courseId,
+            Authentication authentication) {
+
+        CourseProgressResponse response = enrollmentService.getCourseProgress(
+            courseId,
+            authentication.getName());
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+        }
 }

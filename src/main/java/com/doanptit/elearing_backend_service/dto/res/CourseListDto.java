@@ -10,4 +10,6 @@ public class CourseListDto {
     private String image;
     private CourseCategory category;
     private AuthorDto author;
+    private Long totalDuration; // Total duration in minutes
+    private Integer totalLessons; // Total number of lessons
 }

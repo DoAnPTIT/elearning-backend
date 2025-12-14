@@ -9,6 +9,7 @@ import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
+import com.doanptit.elearing_backend_service.enums.ExamType;
 import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
@@ -89,6 +90,26 @@ public class CourseServiceImpl implements CourseService {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
         checkCourseAuthorship(section.getCourse(), teacherEmail);
+        
+        // If lesson type is QUIZ or ASSIGNMENT, create an Exam instead
+        if (request.getLessonType() == LessonType.QUIZ || request.getLessonType() == LessonType.ASSIGNMENT) {
+            Exam exam = new Exam();
+            exam.setTitle(request.getTitle());
+            exam.setDescription(request.getArticleContent()); // Reuse article content field for description
+            exam.setExamType(request.getLessonType() == LessonType.QUIZ ? ExamType.QUIZ : ExamType.ASSIGNMENT);
+            exam.setSection(section);
+            exam.setActive(true);
+            Exam savedExam = examRepository.save(exam);
+            
+            // Return as LessonResponse (convert exam to lesson response format)
+            LessonResponse response = new LessonResponse();
+            response.setId(savedExam.getId());
+            response.setTitle(savedExam.getTitle());
+            response.setLessonType(request.getLessonType());
+            return response;
+        }
+        
+        // Normal lesson creation for VIDEO and ARTICLE
         Lesson lesson = lessonMapper.toEntity(request);
         if (request.getLessonType() == LessonType.ARTICLE) {
             lesson.setArticleContent(request.getArticleContent());
@@ -113,6 +134,23 @@ public class CourseServiceImpl implements CourseService {
         lesson.setVideoUrl(videoUrl);
         lessonRepository.save(lesson);
         return videoUrl;
+    }
+
+    @Override
+    @Transactional
+    public String uploadLessonDocument(Long lessonId, MultipartFile file, String teacherEmail) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+        checkCourseAuthorship(lesson.getSection().getCourse(), teacherEmail);
+
+        if (lesson.getLessonType() != LessonType.ARTICLE) {
+            throw new AppException(ErrorCode.INTERNAL_ERROR);
+        }
+
+        String documentUrl = s3Service.uploadFile(file, "lesson-documents");
+        lesson.setVideoUrl(documentUrl); // Reuse videoUrl field for document URL
+        lessonRepository.save(lesson);
+        return documentUrl;
     }
 
     @Override
@@ -159,7 +197,9 @@ public class CourseServiceImpl implements CourseService {
     public void submitCourseForReview(Long courseId, String teacherEmail) {
         Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
 
-        if (course.getStatus() != CourseStatus.DRAFT && course.getStatus() != CourseStatus.REJECTED) {
+        if (course.getStatus() != CourseStatus.DRAFT
+            && course.getStatus() != CourseStatus.REJECTED
+            && course.getStatus() != CourseStatus.HIDDEN) {
             throw new AppException(ErrorCode.INVALID_COURSE_STATUS_FOR_REVIEW);
         }
         if (course.getImage() == null || course.getImage().isEmpty()) {
@@ -181,6 +221,17 @@ public class CourseServiceImpl implements CourseService {
             throw new AppException(ErrorCode.COURSE_IS_EMPTY);
         }
         course.setStatus(CourseStatus.PENDING_APPROVAL);
+        courseRepository.save(course);
+    }
+
+    @Override
+    @Transactional
+    public void hideCourse(Long courseId, String teacherEmail) {
+        Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
+        if (course.getStatus() != CourseStatus.ACTIVE) {
+            throw new AppException(ErrorCode.COURSE_NOT_ACTIVE);
+        }
+        course.setStatus(CourseStatus.HIDDEN);
         courseRepository.save(course);
     }
 
@@ -294,25 +345,15 @@ public class CourseServiceImpl implements CourseService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
-        // 1. Khóa học phải ACTIVE (của bạn)
+        // 1. Khóa học phải ACTIVE (đã được duyệt và xuất bản)
         if (course.getStatus() != CourseStatus.ACTIVE) {
             throw new AppException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        // 2. Logic kiểm tra Student
-        // (Chúng ta mặc định người gọi API này là Student,
-        // vì Admin/Teacher sẽ gọi API riêng của họ)
-        String studentEmail = authentication.getName();
-        EnrollmentStatus status = enrollmentRepository.findEnrollmentStatus(studentEmail, courseId)
-                .orElse(null); // (null nếu chưa đăng ký)
-
-        if (status == EnrollmentStatus.APPROVED) {
-            // Đã được duyệt -> Trả về DTO
-            return publicCourseMapper.toCourseDetailDto(course);
-        }
-
-        // Nếu không (chưa đăng ký, PENDING, REJECTED) -> Báo lỗi
-        throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
+        // 2. Trả về thông tin khóa học cho tất cả user (dù chưa enroll)
+        // Điều này cho phép user xem preview để quyết định có enroll hay không
+        // Kiểm tra enrollment chỉ cần thiết khi vào học bài (API lessons)
+        return publicCourseMapper.toCourseDetailDto(course);
     }
 
     private Pageable createPageable(int page, int size, String[] sort, String defaultSortField) {
