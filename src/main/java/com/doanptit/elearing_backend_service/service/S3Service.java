@@ -30,6 +30,29 @@ public class S3Service {
     private String s3Endpoint;
 
     /**
+     * Xác định bucket thực tế từ path
+     */
+    private String determineBucket(String path) {
+        if (path == null) {
+            return bucketName; // default: user-images
+        }
+        
+        // Map path string to actual bucket name
+        switch (path.toLowerCase()) {
+            case "course-images":
+                return "course-images";
+            case "lesson-videos":
+                return "lesson-videos";
+            case "lesson-documents":
+                return "lesson-documents";
+            case "user-images":
+                return "user-images";
+            default:
+                return bucketName; // fallback to default
+        }
+    }
+
+    /**
      * PHƯƠNG THỨC MỚI: Upload file chung (video, ảnh bìa khóa học, tài liệu...)
      *
      * @param file File được upload
@@ -48,20 +71,22 @@ public class S3Service {
         }
 
         // Tạo key duy nhất ngẫu nhiên cho file
-        String key = path + "/" + UUID.randomUUID() + fileExtension;
+        String fileName = UUID.randomUUID() + fileExtension;
+        
+        // Determine actual bucket based on path
+        String actualBucket = determineBucket(path);
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
+                .bucket(actualBucket)
+                .key(fileName)
                 .contentType(file.getContentType())
                 .build();
 
         try {
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
 
-            // Trả về URL đầy đủ để truy cập file
-            // Với LocalStack, URL thường là endpoint/bucketName/key
-            return s3Endpoint + "/" + bucketName + "/" + key;
+            // Return backend proxy URL instead of direct S3 URL
+            return "http://localhost:8080/api/files/" + actualBucket + "/" + fileName;
 
         } catch (IOException e) {
             throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
@@ -89,7 +114,8 @@ public class S3Service {
             s3Client.putObject(putObjectRequest,
                     software.amazon.awssdk.core.sync.RequestBody.fromBytes(bytes));
 
-            return s3Endpoint + "/" + bucketName + "/" + fileName;
+            // Return backend proxy URL instead of direct S3 URL
+            return "http://localhost:8080/api/files/" + bucketName + "/" + fileName;
 
         } catch (IOException e) {
             throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);

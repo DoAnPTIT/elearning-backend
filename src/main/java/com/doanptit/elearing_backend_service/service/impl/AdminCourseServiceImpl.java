@@ -6,17 +6,20 @@ import com.doanptit.elearing_backend_service.dto.res.AdminCourseDetailDto;
 import com.doanptit.elearing_backend_service.dto.res.AdminCourseListDto;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
+import com.doanptit.elearing_backend_service.event.CourseContentUpdatedEvent;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.AdminCourseMapper;
 import com.doanptit.elearing_backend_service.model.Course;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
+import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
 import com.doanptit.elearing_backend_service.service.AdminCourseService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -30,7 +33,9 @@ import java.util.List;
 public class AdminCourseServiceImpl implements AdminCourseService {
 
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final AdminCourseMapper adminCourseMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -94,10 +99,19 @@ public class AdminCourseServiceImpl implements AdminCourseService {
         Pageable pageable = PageRequest.of(page, size, sortSpec);
 
         // --- 3️⃣ Tạo Specification ---
+        System.out.println("=== ADMIN GET COURSES DEBUG ===");
+        System.out.println("Status filter: " + status);
+        System.out.println("Category filter: " + category);
+        System.out.println("Title filter: " + title);
+        System.out.println("Author filter: " + authorName);
+        
         Specification<Course> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if (status != null) predicates.add(cb.equal(root.get("status"), status));
+            if (status != null) {
+                System.out.println("Adding status predicate: " + status);
+                predicates.add(cb.equal(root.get("status"), status));
+            }
             if (category != null) predicates.add(cb.equal(root.get("category"), category));
             if (title != null && !title.isBlank())
                 predicates.add(cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
@@ -112,11 +126,15 @@ public class AdminCourseServiceImpl implements AdminCourseService {
                 query.distinct(true);
             }
 
+            System.out.println("Total predicates: " + predicates.size());
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         // --- 4️⃣ Truy vấn ---
         Page<Course> coursePage = courseRepository.findAll(spec, pageable);
+        System.out.println("Found courses: " + coursePage.getTotalElements());
+        System.out.println("=== END DEBUG ===");
+        
         Page<AdminCourseListDto> dtoPage = coursePage.map(adminCourseMapper::toCourseListDto);
 
         // --- 5️⃣ Trả kết quả ---
@@ -158,6 +176,21 @@ public class AdminCourseServiceImpl implements AdminCourseService {
                         : null
         );
         Course savedCourse = courseRepository.save(course);
+
+        if (savedCourse.getStatus() == CourseStatus.ACTIVE) { // (Hoặc APPROVED)
+            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
+        }
+
         return adminCourseMapper.toCourseDetailDto(savedCourse);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCourse(Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        enrollmentRepository.deleteByCourse_Id(courseId);
+        courseRepository.delete(course);
     }
 }

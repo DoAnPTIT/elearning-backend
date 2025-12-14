@@ -16,6 +16,23 @@ public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
 
+    // Lấy enrollment info của student cho 1 course cụ thể
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/course/{courseId}")
+    public ResponseEntity<ApiResponse<?>> getEnrollmentForCourse(
+            @PathVariable Long courseId,
+            Authentication authentication) {
+
+        var enrollment = enrollmentService.getEnrollmentForCourse(courseId, authentication.getName());
+        
+        if (enrollment == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(404, "Chưa đăng ký khóa học này", "NOT_ENROLLED"));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(enrollment));
+    }
+
     // Chỉ STUDENT mới được đăng ký
     @PreAuthorize("hasRole('STUDENT')")
     @PostMapping("/{courseId}")

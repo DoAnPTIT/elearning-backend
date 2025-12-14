@@ -1,12 +1,10 @@
 package com.doanptit.elearing_backend_service.service;
 
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
-import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
+import com.doanptit.elearing_backend_service.dto.req.*;
 import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
+import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,10 +15,20 @@ public interface CourseService {
     SectionResponse createSection(Long courseId, CreateSectionRequestDto request, String teacherEmail);
     LessonResponse createLesson(Long sectionId, CreateLessonRequestDto request, String teacherEmail);
     String uploadLessonVideo(Long lessonId, MultipartFile file, String teacherEmail);
+    String uploadLessonDocument(Long lessonId, MultipartFile file, String teacherEmail);
     ExamResponse createExam(Long sectionId, CreateExamRequestDto request, String teacherEmail);
     void submitCourseForReview(Long courseId, String teacherEmail);
+        void hideCourse(Long courseId, String teacherEmail);
 
-    PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(String teacherEmail, int page, int size, String... sort);
+    PagedResponse<AdminCourseListDto> getAllCoursesForTeacher(
+            String teacherEmail,
+            int page, int size,
+            String title, CourseStatus status, CourseCategory category, // <-- Thêm tham số lọc
+            String... sort
+    );
+
+    AdminCourseDetailDto updateCourse(Long courseId, UpdateCourseRequestDto request, String teacherEmail);
+
     AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail);
 
     PagedResponse<CourseListDto> getAllPublicCourses(

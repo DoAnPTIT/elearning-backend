@@ -4,6 +4,7 @@ import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
+import com.doanptit.elearing_backend_service.dto.res.AdminUserListDto;
 import com.doanptit.elearing_backend_service.dto.res.BatchCreationResult;
 import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
@@ -19,6 +20,8 @@ public interface UserService {
     UserResponseDto getUserById(Integer id);
 
     Page<UserResponseDto> findAllUsers(int pageNo, int pageSize, String... sorts);
+
+    Page<AdminUserListDto> findAllUsersForAdmin(int pageNo, int pageSize, String role, String... sorts);
 
     void changePassword(Integer id, String email, ChangePasswordRequest request);
 

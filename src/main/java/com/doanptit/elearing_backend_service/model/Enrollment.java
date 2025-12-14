@@ -21,8 +21,14 @@ public class Enrollment extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Boolean active = true;
-    private Float progress;
+        @Builder.Default
+        private Boolean active = true;
+
+        @Builder.Default
+        private Float progress = 0f;
+
+    @Column(name = "completed_lessons", columnDefinition = "TEXT")
+    private String completedLessons;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

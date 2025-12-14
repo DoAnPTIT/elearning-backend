@@ -18,4 +18,6 @@ public class AdminCourseDetailDto {
     private AdminAuthorDto author;
     private List<AdminSectionDto> sections;
     private List<EnrollmentStudentDto> enrollments;
+    private Long totalDuration; // Total duration in minutes
+    private Integer totalLessons; // Total number of lessons
 }

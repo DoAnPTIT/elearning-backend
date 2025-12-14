@@ -37,6 +37,6 @@ public class Exam extends BaseEntity{
     @BatchSize(size = 20)
     private List<Question> questions;
 
-    @OneToMany(mappedBy = "exam")
+    @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Submission> submissions;
 }

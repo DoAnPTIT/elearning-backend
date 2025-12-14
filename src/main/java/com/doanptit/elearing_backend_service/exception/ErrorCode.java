@@ -50,7 +50,7 @@ public enum ErrorCode {
     INVALID_ROLE("INVALID_ROLE", "Role không hợp lệ", HttpStatus.BAD_REQUEST),
 
     SECTION_NOT_FOUND("SECTION_NOT_FOUND", "Khong tim thay section", HttpStatus.NOT_FOUND),
-    LESSON_NOT_FOUND("LESSON_NOT_FOUND", "Khong tim thay section", HttpStatus.NOT_FOUND),
+    LESSON_NOT_FOUND("LESSON_NOT_FOUND", "Không tìm thấy bài học", HttpStatus.NOT_FOUND),
 
     // Submit course
     LESSON_NOT_VIDEO_TYPE("LESSON_NOT_VIDEO_TYPE", "Loại bài giảng không phải là video", HttpStatus.BAD_REQUEST),

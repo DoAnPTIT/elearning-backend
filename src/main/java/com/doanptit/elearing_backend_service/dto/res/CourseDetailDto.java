@@ -15,4 +15,6 @@ public class CourseDetailDto {
     private CourseCategory category;
     private AuthorDto author;
     private List<SectionDto> sections;
+    private Long totalDuration; // Total duration in minutes
+    private Integer totalLessons; // Total number of lessons
 }

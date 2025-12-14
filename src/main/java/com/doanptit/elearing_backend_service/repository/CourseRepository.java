@@ -16,7 +16,7 @@ public interface CourseRepository extends JpaRepository<Course, Long>, JpaSpecif
     Page<Course> findByAuthor_Email(String teacherEmail, Pageable pageable);
 
     // (Dùng cho Public GET danh sách)
-    @Query("SELECT c FROM Course c WHERE c.status = 'APPROVED'")
+    @Query("SELECT c FROM Course c WHERE c.status = 'ACTIVE'")
     Page<Course> findAllApproved(Pageable pageable);
 
 }

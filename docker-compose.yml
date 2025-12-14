@@ -14,18 +14,34 @@ services:
       - "LAMBDA_DOCKER_FLAGS=--add-host host.docker.internal:host-gateway"
       - LAMBDA_DOCKER_NETWORK=elearning-backend-service-network
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - PERSISTENCE=1
     ports:
       - "4577:4566"
       - "4510-4559:4510-4559"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack-data:/var/lib/localstack"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - elearning-backend-service-network
 
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - "./minio-data:/data"
+    networks:
+      - elearning-backend-service-network
+
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg16
     environment:
       - POSTGRES_DB=elearing-backend-service
       - POSTGRES_USER=elearningservice

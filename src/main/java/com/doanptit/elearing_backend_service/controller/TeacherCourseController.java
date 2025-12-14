@@ -2,15 +2,15 @@ package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
-import com.doanptit.elearing_backend_service.dto.req.CreateCourseRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateExamRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateLessonRequestDto;
-import com.doanptit.elearing_backend_service.dto.req.CreateSectionRequestDto;
+import com.doanptit.elearing_backend_service.dto.req.*;
 import com.doanptit.elearing_backend_service.dto.res.*;
+import com.doanptit.elearing_backend_service.enums.CourseCategory;
+import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/teacher/courses")
 @RequiredArgsConstructor
@@ -33,10 +34,15 @@ public class TeacherCourseController {
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            // Thêm các tham số lọc
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) CourseStatus status,
+            @RequestParam(required = false) CourseCategory category,
+            //
             @RequestParam(defaultValue = "id,asc") String... sort) {
 
         PagedResponse<AdminCourseListDto> courses = courseService.getAllCoursesForTeacher(
-                authentication.getName(), page, size, sort);
+                authentication.getName(), page, size, title, status, category, sort);
 
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
@@ -98,6 +104,16 @@ public class TeacherCourseController {
         return ResponseEntity.ok(ApiResponse.success(videoUrl));
     }
 
+    // Upload tài liệu (PDF) cho bài giảng ARTICLE
+    @PostMapping(value = "/lessons/upload/{lessonId}/document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<String>> uploadLessonDocument(
+            @PathVariable Long lessonId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        String documentUrl = courseService.uploadLessonDocument(lessonId, file, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(documentUrl));
+    }
+
     // Bước 4: Tạo bài kiểm tra trong chương
     @PostMapping("/sections/{sectionId}/exams")
     public ResponseEntity<ApiResponse<ExamResponse>> createExam(
@@ -115,6 +131,30 @@ public class TeacherCourseController {
             Authentication authentication) {
         courseService.submitCourseForReview(courseId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã gửi khóa học thành công, vui lòng đợi thông báo từ email trong quá trình chúng tôi phê duyệt"));
+    }
+
+    @PatchMapping("/{courseId}/hide")
+    public ResponseEntity<ApiResponse<String>> hideCourse(
+            @PathVariable Long courseId,
+            Authentication authentication) {
+        courseService.hideCourse(courseId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Khóa học đã được chuyển sang trạng thái ẩn."));
+    }
+
+    // --- API : LẤY DANH SÁCH ENROLLMENT CỦA KHÓA HỌC ---
+    // (Chỉ Teacher/Admin mới có quyền)
+    @GetMapping("/{courseId}/enrollments")
+    public ResponseEntity<ApiResponse<PagedResponse<?>>> getCourseEnrollments(
+            @PathVariable Long courseId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        
+        PagedResponse<?> enrollments = enrollmentService.getCourseEnrollments(
+                courseId, status, authentication.getName(), page, size);
+        
+        return ResponseEntity.ok(ApiResponse.success(enrollments));
     }
 
     // --- API : PHÊ DUYỆT ĐĂNG KÝ ---
@@ -137,5 +177,15 @@ public class TeacherCourseController {
 
         enrollmentService.rejectEnrollment(enrollmentId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã từ chối học viên."));
+    }
+
+    @PutMapping("/{courseId}")
+    public ResponseEntity<ApiResponse<AdminCourseDetailDto>> updateCourse(
+            @PathVariable Long courseId,
+            @Valid @RequestBody UpdateCourseRequestDto request,
+            Authentication authentication) {
+        log.info("api update course");
+        AdminCourseDetailDto updatedCourse = courseService.updateCourse(courseId, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(updatedCourse));
     }
 }
