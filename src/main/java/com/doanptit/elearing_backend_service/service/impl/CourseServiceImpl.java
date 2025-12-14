@@ -9,6 +9,7 @@ import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.enums.ExamType;
 import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.event.CourseContentUpdatedEvent;
+import com.doanptit.elearing_backend_service.enums.*;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.*;
@@ -16,6 +17,7 @@ import com.doanptit.elearing_backend_service.model.*;
 import com.doanptit.elearing_backend_service.repository.*;
 import com.doanptit.elearing_backend_service.service.CourseService;
 import com.doanptit.elearing_backend_service.service.S3Service;
+import com.doanptit.elearing_backend_service.service.even.NotificationEvent;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -36,7 +38,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class CourseServiceImpl implements CourseService {
-
     private final CourseRepository courseRepository;
     private final SectionRepository sectionRepository;
     private final LessonRepository lessonRepository;
@@ -236,6 +237,16 @@ public class CourseServiceImpl implements CourseService {
         }
         course.setStatus(CourseStatus.PENDING_APPROVAL);
         courseRepository.save(course);
+        List<User> admins = userRepository.findByRole(Role.ADMIN);
+
+        for (User admin : admins) {
+            eventPublisher.publishEvent(new NotificationEvent(this,
+                    admin.getEmail(),
+                    "Yêu cầu phê duyệt khóa học",
+                    "Giảng viên " + admin.getUsername() + " vừa gửi yêu cầu duyệt khóa học: " + course.getTitle(),
+                    "/admin/courses/" + courseId // URL admin sẽ click vào
+            ));
+        }
     }
 
     @Override
