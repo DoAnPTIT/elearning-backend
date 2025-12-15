@@ -37,7 +37,7 @@ out/
 .vscode/
 
 ### LocalStack persistence data ###
-localstack-data/
+localstack_data/
 
 ### MinIO persistence data ###
 minio-data/
