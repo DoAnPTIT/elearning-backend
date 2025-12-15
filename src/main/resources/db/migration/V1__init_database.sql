@@ -19,7 +19,7 @@ CREATE TABLE users (
 CREATE TABLE courses (
                          id SERIAL PRIMARY KEY,
                          title VARCHAR(255) NOT NULL,
-                         description VARCHAR(255),
+                         description TEXT,
                          status INT,
                          image VARCHAR(255),
                          active BOOLEAN DEFAULT TRUE,
@@ -63,7 +63,7 @@ CREATE TABLE lessons (
 CREATE TABLE exams (
                        id SERIAL PRIMARY KEY,
                        title VARCHAR(255) NOT NULL,
-                       description VARCHAR(255),
+                       description TEXT,
                        exam_type VARCHAR(50),
                        active BOOLEAN DEFAULT TRUE,
                        deleted_on TIMESTAMP NULL,
@@ -79,7 +79,7 @@ CREATE TABLE exams (
 CREATE TABLE questions (
                            id SERIAL PRIMARY KEY,
                            question_type VARCHAR(50),
-                           content VARCHAR(255),
+                           content TEXT,
                            point INT,
                            active BOOLEAN DEFAULT TRUE,
                            created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -93,7 +93,7 @@ CREATE TABLE questions (
 -- Bảng answers (mỗi câu hỏi có nhiều đáp án)
 CREATE TABLE answers (
                          id SERIAL PRIMARY KEY,
-                         content VARCHAR(255),
+                         content TEXT,
                          is_correct BOOLEAN DEFAULT FALSE,
                          question_id INT REFERENCES questions(id) ON DELETE CASCADE
 );
@@ -109,7 +109,7 @@ CREATE TABLE submissions (
 -- Bảng comments (comment cho bài học)
 CREATE TABLE comments (
                           id SERIAL PRIMARY KEY,
-                          content VARCHAR(255),
+                          content TEXT,
                           deleted_on TIMESTAMP NULL,
                           created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                           updated_on TIMESTAMP,
