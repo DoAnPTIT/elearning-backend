@@ -22,7 +22,7 @@ public enum ErrorCode {
     COURSE_NOT_ACTIVE("COURSE_NOT_ACTIVE", "Khóa học này không hoạt động hoặc chưa được duyệt", HttpStatus.BAD_REQUEST),
     ALREADY_ENROLLED("ALREADY_ENROLLED", "Bạn đã đăng ký khóa học này rồi", HttpStatus.BAD_REQUEST),
     ENROLLMENT_NOT_PENDING("ENROLLMENT_NOT_PENDING", "Lượt đăng ký này không ở trạng thái 'Chờ phê duyệt'", HttpStatus.BAD_REQUEST),
-    INVALID_REQUEST("INVALID_REQUEST", "Yêu cầu không hợp lệ (Ví dụ: Reply không cùng bài học với comment gốc)", HttpStatus.BAD_REQUEST),
+    INVALID_REQUEST("INVALID_REQUEST", "Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // Lỗi khi đặt lại mật khẩu / Auth
     USER_EMAIL_EXISTS("USER_EMAIL_EXISTS", "Email đã được sử dụng", HttpStatus.BAD_REQUEST),

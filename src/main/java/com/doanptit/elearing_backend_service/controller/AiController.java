@@ -28,6 +28,15 @@ public class AiController {
         return ResponseEntity.ok(ApiResponse.success("AI đã học dữ liệu khóa học thành công! Dữ liệu đã được lưu vào Vector Store."));
     }
 
+    @PostMapping("/train/all")
+    @PreAuthorize("hasRole('ADMIN')") // Bảo mật
+    public ResponseEntity<ApiResponse<String>> trainAllCourses() {
+        // Lưu ý: Việc này có thể mất thời gian nếu dữ liệu lớn
+        // Tốt nhất nên chạy Async, nhưng để đơn giản ta chạy Sync trước
+        aiService.ingestAllActiveCourses();
+        return ResponseEntity.ok(ApiResponse.success("Đã hoàn tất nạp dữ liệu cho TOÀN BỘ khóa học Active!"));
+    }
+
     // --- API 2: STUDENT HỎI AI (Chat) ---
     // Học viên gọi API này để hỏi đáp về nội dung khóa học
     @PreAuthorize("hasRole('STUDENT') || hasRole('TEACHER') || hasRole('ADMIN')")
