@@ -2,7 +2,7 @@ ALTER TABLE courses
     ADD COLUMN author_id INT REFERENCES users(id) ON DELETE SET NULL,
     ADD COLUMN objectives TEXT,
     ADD COLUMN target_audience TEXT,
-    ADD COLUMN category VARCHAR(50),
+    ADD COLUMN category VARCHAR(255),
     ADD COLUMN rejection_reason TEXT;
 
 ALTER TABLE courses
