@@ -295,22 +295,52 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional
-    public AdminCourseDetailDto updateCourse(Long courseId, UpdateCourseRequestDto request, String teacherEmail) {
-        Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
+    public AdminCourseDetailDto updateCourse(Long courseId, UpdateCourseRequestDto request, String requesterEmail) {
+        // 1. Tìm khóa học
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
-        course.setTitle(request.getTitle());
-        course.setDescription(request.getDescription());
-        course.setObjectives(request.getObjectives());
-        course.setTargetAudience(request.getTargetAudience());
-        course.setCategory(request.getCategory());
+        // 2. Lấy thông tin người đang thực hiện hành động (Requester)
+        User requester = userRepository.findByEmail(requesterEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // 3. CHECK QUYỀN: Là Tác giả HOẶC là ADMIN
+        // (Lưu ý: Role.ADMIN dựa trên Enum trong User.java của bạn)
+        boolean isAuthor = course.getAuthor().getEmail().equals(requesterEmail);
+        boolean isAdmin = requester.getRole() == com.doanptit.elearing_backend_service.enums.Role.ADMIN;
+
+        if (!isAuthor && !isAdmin) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // 4. LOGIC PATCH (Chỉ update nếu dữ liệu gửi lên KHÁC NULL)
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            course.setTitle(request.getTitle());
+        }
+
+        if (request.getDescription() != null) {
+            course.setDescription(request.getDescription());
+        }
+
+        if (request.getObjectives() != null) {
+            course.setObjectives(request.getObjectives());
+        }
+
+        if (request.getTargetAudience() != null) {
+            course.setTargetAudience(request.getTargetAudience());
+        }
+
+        if (request.getCategory() != null) {
+            course.setCategory(request.getCategory());
+        }
+
+        // 5. Lưu lại
         Course savedCourse = courseRepository.save(course);
 
-        // >>>> LOGIC MỚI: Chỉ train nếu đang ACTIVE <<<<
-        // (Nếu đang DRAFT mà sửa thì kệ, chưa cần học)
-//        if (savedCourse.getStatus() == CourseStatus.ACTIVE) {
-//            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
-//        }
+        // 6. Logic AI: Chỉ train lại nếu course đang ACTIVE
+        if (savedCourse.getStatus() == CourseStatus.ACTIVE) {
+            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
+        }
 
         return adminCourseMapper.toCourseDetailDto(savedCourse);
     }

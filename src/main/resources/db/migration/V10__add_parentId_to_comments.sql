@@ -1,0 +1,2 @@
+ALTER TABLE comments
+ADD COLUMN parent_id INT REFERENCES comments(id) ON DELETE CASCADE;
