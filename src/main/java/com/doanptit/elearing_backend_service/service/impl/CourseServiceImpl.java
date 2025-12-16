@@ -300,12 +300,11 @@ public class CourseServiceImpl implements CourseService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
-        // 2. Lấy thông tin người đang thực hiện hành động (Requester)
+        // 2. Lấy User thực hiện
         User requester = userRepository.findByEmail(requesterEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // 3. CHECK QUYỀN: Là Tác giả HOẶC là ADMIN
-        // (Lưu ý: Role.ADMIN dựa trên Enum trong User.java của bạn)
+        // 3. Check quyền (Admin hoặc Tác giả)
         boolean isAuthor = course.getAuthor().getEmail().equals(requesterEmail);
         boolean isAdmin = requester.getRole() == com.doanptit.elearing_backend_service.enums.Role.ADMIN;
 
@@ -313,31 +312,93 @@ public class CourseServiceImpl implements CourseService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // 4. LOGIC PATCH (Chỉ update nếu dữ liệu gửi lên KHÁC NULL)
-        if (request.getTitle() != null && !request.getTitle().isBlank()) {
-            course.setTitle(request.getTitle());
+        List<String> changedFields = new ArrayList<>();
+
+        // 4. Logic Update + Tracking (Chỉ ghi nhận nếu dữ liệu thực sự thay đổi)
+
+        // -- Title --
+        if (request.getTitle() != null) {
+            // 1. Kiểm tra validation: Nếu gửi lên mà rỗng -> Bắn lỗi ngay
+            if (request.getTitle().isBlank()) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+
+            // 2. Logic Update: Nếu dữ liệu hợp lệ và khác dữ liệu cũ -> Update
+            if (!request.getTitle().equals(course.getTitle())) {
+                course.setTitle(request.getTitle());
+                changedFields.add("Tiêu đề");
+            }
         }
 
-        if (request.getDescription() != null) {
+        // -- Description --
+        if (request.getDescription() != null
+                && !request.getDescription().equals(course.getDescription())) {
             course.setDescription(request.getDescription());
+            changedFields.add("Mô tả");
         }
 
-        if (request.getObjectives() != null) {
+        // -- Objectives --
+        if (request.getObjectives() != null
+                && !request.getObjectives().equals(course.getObjectives())) {
             course.setObjectives(request.getObjectives());
+            changedFields.add("Mục tiêu khóa học");
         }
 
-        if (request.getTargetAudience() != null) {
+        // -- Target Audience --
+        if (request.getTargetAudience() != null
+                && !request.getTargetAudience().equals(course.getTargetAudience())) {
             course.setTargetAudience(request.getTargetAudience());
+            changedFields.add("Đối tượng học viên");
         }
 
-        if (request.getCategory() != null) {
+        // -- Category --
+        if (request.getCategory() != null
+                && request.getCategory() != course.getCategory()) {
             course.setCategory(request.getCategory());
+            changedFields.add("Danh mục");
         }
 
         // 5. Lưu lại
         Course savedCourse = courseRepository.save(course);
 
-        // 6. Logic AI: Chỉ train lại nếu course đang ACTIVE
+        // =================================================================
+        // 🔥 BẮN THÔNG BÁO CHI TIẾT (Chỉ bắn nếu có thay đổi)
+        // =================================================================
+        if (!changedFields.isEmpty()) {
+            // Tạo chuỗi: "Tiêu đề, Mô tả, Mục tiêu"
+            String changesText = String.join(", ", changedFields);
+
+            // Nội dung thông báo
+            String notificationTitle = "Cập nhật khóa học: " + savedCourse.getTitle();
+            String notificationMessage = "Giảng viên đã cập nhật các mục: [" + changesText + "] của khóa học.";
+
+            // A. Gửi cho HỌC VIÊN (Approved)
+            List<Enrollment> students = enrollmentRepository.findAllByCourseIdAndStatus(savedCourse.getId(), EnrollmentStatus.APPROVED);
+            for (Enrollment enrollment : students) {
+                eventPublisher.publishEvent(new NotificationEvent(this,
+                        enrollment.getUser().getEmail(),
+                        notificationTitle,
+                        notificationMessage,
+                        "/learning/" + savedCourse.getId()
+                ));
+            }
+
+            // B. Gửi cho ADMIN
+            List<User> admins = userRepository.findByRole(com.doanptit.elearing_backend_service.enums.Role.ADMIN);
+            for (User admin : admins) {
+                // Tránh gửi lại cho chính mình nếu Admin là người sửa
+                if (!admin.getEmail().equals(requesterEmail)) {
+                    eventPublisher.publishEvent(new NotificationEvent(this,
+                            admin.getEmail(),
+                            "Admin/GV cập nhật khóa học",
+                            "User " + requesterEmail + " đã sửa đổi [" + changesText + "] của khóa: " + savedCourse.getTitle(),
+                            "/admin/courses/" + savedCourse.getId()
+                    ));
+                }
+            }
+        }
+
+        // 6. Logic AI (Giữ nguyên)
         if (savedCourse.getStatus() == CourseStatus.ACTIVE) {
             eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, savedCourse.getId()));
         }

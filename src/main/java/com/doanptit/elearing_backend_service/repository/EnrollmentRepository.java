@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
@@ -26,4 +27,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     // Lấy danh sách enrollment của một student
     Page<Enrollment> findByUser_Email(String email, Pageable pageable);
     Page<Enrollment> findByUser_EmailAndStatus(String email, EnrollmentStatus status, Pageable pageable);
+
+    @Query("SELECT e FROM Enrollment e WHERE e.course.id = :courseId AND e.status = :status")
+    List<Enrollment> findAllByCourseIdAndStatus(Long courseId, EnrollmentStatus status);
 }
