@@ -13,7 +13,9 @@ import com.doanptit.elearing_backend_service.repository.LessonRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.CommentService;
 import com.doanptit.elearing_backend_service.enums.Role;
+import com.doanptit.elearing_backend_service.service.even.NotificationEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,8 +34,9 @@ import java.util.stream.Collectors;
 public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
-    private final LessonRepository lessonRepository; // Sửa thành LessonRepo
+    private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -40,12 +45,12 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND)); // Nhớ thêm ErrorCode này
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
 
         Comment comment = new Comment();
         comment.setContent(request.getContent());
         comment.setCreatedByUser(user);
-        comment.setUpdatedByUser(user); // Set luôn người update ban đầu
+        comment.setUpdatedByUser(user);
         comment.setLesson(lesson);
 
         // Xử lý Reply (Facebook style)
@@ -53,11 +58,46 @@ public class CommentServiceImpl implements CommentService {
             Comment parent = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
 
-            // Logic quan trọng: Comment con phải cùng Lesson với Comment cha
             if (!parent.getLesson().getId().equals(lessonId)) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
             comment.setParentComment(parent);
+
+            // 1. Tạo một tập hợp (Set) để chứa danh sách nhận thông báo (Set giúp tự động loại bỏ trùng lặp)
+            Set<String> recipientEmails = new HashSet<>();
+
+            // A. Thêm chủ nhân của Comment gốc (Comment Cha)
+            recipientEmails.add(parent.getCreatedByUser().getEmail());
+
+            // B. Thêm tất cả những người đã từng reply vào comment này
+            List<String> otherRepliers = commentRepository.findEmailsOfRepliers(parent.getId());
+            recipientEmails.addAll(otherRepliers);
+
+            // C. Loại bỏ chính mình (Người đang comment không cần nhận thông báo của chính mình)
+            recipientEmails.remove(userEmail);
+
+            // 2. Chuẩn bị nội dung thông báo
+            String replierName = user.getFirstname() + " " + user.getLastname();
+            String parentAuthorName = parent.getCreatedByUser().getFirstname() + " " + parent.getCreatedByUser().getLastname();
+            String lessonTitle = lesson.getTitle();
+            String courseTitle = lesson.getSection().getCourse().getTitle();
+
+            String notiTitle = "Phản hồi bình luận mới";
+            String notiMessage = String.format("%s đã phản hồi bình luận về bình luận của %s trong bài giảng %s khóa học %s",
+                    replierName, parentAuthorName, lessonTitle, courseTitle);
+
+            // Link để nhảy tới bài học
+            String link = "/learning/" + lesson.getSection().getCourse().getId() + "?lesson=" + lesson.getId();
+
+            // 3. Gửi thông báo cho từng người trong danh sách
+            for (String recipient : recipientEmails) {
+                eventPublisher.publishEvent(new NotificationEvent(this,
+                        recipient,
+                        notiTitle,
+                        notiMessage,
+                        link
+                ));
+            }
         }
 
         Comment savedComment = commentRepository.save(comment);
@@ -67,7 +107,6 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<CommentResponseDto> getCommentsByLesson(Long lessonId, int page, int size) {
-        // Facebook Style: Comment gốc mới nhất nằm trên cùng
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdOn").descending());
 
         Page<Comment> commentPage = commentRepository.findRootCommentsByLessonId(lessonId, pageable);
