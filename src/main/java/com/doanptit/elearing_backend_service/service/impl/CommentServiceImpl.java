@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,7 +54,7 @@ public class CommentServiceImpl implements CommentService {
         comment.setUpdatedByUser(user);
         comment.setLesson(lesson);
 
-        // Xử lý Reply (Facebook style)
+        // Xử lý Reply
         if (request.getParentId() != null) {
             Comment parent = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
@@ -63,20 +64,22 @@ public class CommentServiceImpl implements CommentService {
             }
             comment.setParentComment(parent);
 
-            // 1. Tạo một tập hợp (Set) để chứa danh sách nhận thông báo (Set giúp tự động loại bỏ trùng lặp)
+            // 1. Tạo tập hợp nhận tin (Chỉ làm 1 lần thôi)
             Set<String> recipientEmails = new HashSet<>();
 
-            // A. Thêm chủ nhân của Comment gốc (Comment Cha)
+            // A. Thêm chủ nhân comment gốc
             recipientEmails.add(parent.getCreatedByUser().getEmail());
 
-            // B. Thêm tất cả những người đã từng reply vào comment này
+            // B. Thêm những người đã reply khác
             List<String> otherRepliers = commentRepository.findEmailsOfRepliers(parent.getId());
-            recipientEmails.addAll(otherRepliers);
+            if (otherRepliers != null) {
+                recipientEmails.addAll(otherRepliers);
+            }
 
-            // C. Loại bỏ chính mình (Người đang comment không cần nhận thông báo của chính mình)
+            // C. Loại bỏ chính mình
             recipientEmails.remove(userEmail);
 
-            // 2. Chuẩn bị nội dung thông báo
+            // 2. Chuẩn bị nội dung
             String replierName = user.getFirstname() + " " + user.getLastname();
             String parentAuthorName = parent.getCreatedByUser().getFirstname() + " " + parent.getCreatedByUser().getLastname();
             String lessonTitle = lesson.getTitle();
@@ -85,14 +88,12 @@ public class CommentServiceImpl implements CommentService {
             String notiTitle = "Phản hồi bình luận mới";
             String notiMessage = String.format("%s đã phản hồi bình luận về bình luận của %s trong bài giảng %s khóa học %s",
                     replierName, parentAuthorName, lessonTitle, courseTitle);
-
-            // Link để nhảy tới bài học
             String link = "/learning/" + lesson.getSection().getCourse().getId() + "?lesson=" + lesson.getId();
 
-            // 3. Gửi thông báo cho từng người trong danh sách
-            for (String recipient : recipientEmails) {
+            // 3. Gửi Batch
+            if (!recipientEmails.isEmpty()) {
                 eventPublisher.publishEvent(new NotificationEvent(this,
-                        recipient,
+                        new ArrayList<>(recipientEmails), // Set -> List
                         notiTitle,
                         notiMessage,
                         link

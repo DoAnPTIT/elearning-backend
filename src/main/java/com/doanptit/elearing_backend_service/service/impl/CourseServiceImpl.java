@@ -34,6 +34,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -361,9 +362,6 @@ public class CourseServiceImpl implements CourseService {
         // 5. Lưu lại
         Course savedCourse = courseRepository.save(course);
 
-        // =================================================================
-        // 🔥 BẮN THÔNG BÁO CHI TIẾT (Chỉ bắn nếu có thay đổi)
-        // =================================================================
         if (!changedFields.isEmpty()) {
             // Tạo chuỗi: "Tiêu đề, Mô tả, Mục tiêu"
             String changesText = String.join(", ", changedFields);
@@ -372,11 +370,19 @@ public class CourseServiceImpl implements CourseService {
             String notificationTitle = "Cập nhật khóa học: " + savedCourse.getTitle();
             String notificationMessage = "Giảng viên đã cập nhật các mục: [" + changesText + "] của khóa học.";
 
-            // A. Gửi cho HỌC VIÊN (Approved)
+            // Trong hàm updateCourse ...
+
+            // A. Gửi cho HỌC VIÊN
             List<Enrollment> students = enrollmentRepository.findAllByCourseIdAndStatus(savedCourse.getId(), EnrollmentStatus.APPROVED);
-            for (Enrollment enrollment : students) {
+
+            // Dùng Stream để lấy list email nhanh gọn
+            List<String> studentEmails = students.stream()
+                    .map(e -> e.getUser().getEmail())
+                    .collect(Collectors.toList());
+
+            if (!studentEmails.isEmpty()) {
                 eventPublisher.publishEvent(new NotificationEvent(this,
-                        enrollment.getUser().getEmail(),
+                        studentEmails, // Gửi cả list
                         notificationTitle,
                         notificationMessage,
                         "/learning/" + savedCourse.getId()
@@ -384,17 +390,20 @@ public class CourseServiceImpl implements CourseService {
             }
 
             // B. Gửi cho ADMIN
-            List<User> admins = userRepository.findByRole(com.doanptit.elearing_backend_service.enums.Role.ADMIN);
-            for (User admin : admins) {
-                // Tránh gửi lại cho chính mình nếu Admin là người sửa
-                if (!admin.getEmail().equals(requesterEmail)) {
-                    eventPublisher.publishEvent(new NotificationEvent(this,
-                            admin.getEmail(),
-                            "Admin/GV cập nhật khóa học",
-                            "User " + requesterEmail + " đã sửa đổi [" + changesText + "] của khóa: " + savedCourse.getTitle(),
-                            "/admin/courses/" + savedCourse.getId()
-                    ));
-                }
+            List<User> admins = userRepository.findByRole(Role.ADMIN);
+
+            List<String> adminEmails = admins.stream()
+                    .filter(a -> !a.getEmail().equals(requesterEmail)) // Lọc chính mình
+                    .map(User::getEmail)
+                    .collect(Collectors.toList());
+
+            if (!adminEmails.isEmpty()) {
+                eventPublisher.publishEvent(new NotificationEvent(this,
+                        adminEmails,
+                        "Admin/GV cập nhật khóa học",
+                        "User " + requesterEmail + " đã sửa đổi [" + changesText + "]...",
+                        "/admin/courses/" + savedCourse.getId()
+                ));
             }
         }
 

@@ -19,6 +19,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -32,35 +35,48 @@ public class NotificationServiceImpl implements NotificationService {
     @EventListener
     @Transactional
     public void handleNotificationEvent(NotificationEvent event) {
-        log.info("Sending notification to user: {}", event.getRecipientId());
+        // SỬA: Lấy danh sách emails thay vì 1 ID
+        List<String> recipients = event.getRecipientEmails();
+        log.info("Sending notification to {} users", recipients.size());
 
-        // 1. Lưu vào Database (Persistence)
-        Notification notification = Notification.builder()
-                .recipientId(event.getRecipientId())
-                .title(event.getTitle())
-                .message(event.getMessage())
-                .targetUrl(event.getTargetUrl())
-                .isRead(false)
-                .build();
-        Notification savedNotif = notificationRepository.save(notification);
+        List<Notification> notificationsToSave = new ArrayList<>();
 
-        // 2. Tạo Response DTO
-        NotificationResponse response = NotificationResponse.builder()
-                .id(savedNotif.getId())
-                .title(savedNotif.getTitle())
-                .message(savedNotif.getMessage())
-                .targetUrl(savedNotif.getTargetUrl())
-                .isRead(false)
-                .createdAt(savedNotif.getCreatedAt())
-                .build();
+        // VÒNG LẶP: Xử lý cho từng người trong danh sách
+        for (String email : recipients) {
 
-        // 3. Gửi Real-time qua WebSocket
-        // User sẽ nhận được tại topic: /user/{email}/queue/notifications
-        messagingTemplate.convertAndSendToUser(
-                event.getRecipientId(),
-                "/queue/notifications",
-                response
-        );
+            // 1. Tạo Entity
+            Notification notification = Notification.builder()
+                    .recipientId(email) // Lấy email từ vòng lặp
+                    .title(event.getTitle())
+                    .message(event.getMessage())
+                    .targetUrl(event.getTargetUrl())
+                    .isRead(false)
+                    .build();
+
+            notificationsToSave.add(notification);
+        }
+
+        // 2. Lưu Batch vào DB (Nhanh hơn lưu lẻ)
+        List<Notification> savedNotifs = notificationRepository.saveAll(notificationsToSave);
+
+        // 3. Gửi Real-time qua WebSocket (Phải gửi lẻ từng người)
+        for (Notification savedNotif : savedNotifs) {
+            NotificationResponse response = NotificationResponse.builder()
+                    .id(savedNotif.getId())
+                    .title(savedNotif.getTitle())
+                    .message(savedNotif.getMessage())
+                    .targetUrl(savedNotif.getTargetUrl())
+                    .isRead(false)
+                    .createdAt(savedNotif.getCreatedAt())
+                    .build();
+
+            // Gửi đến đúng User đó
+            messagingTemplate.convertAndSendToUser(
+                    savedNotif.getRecipientId(),
+                    "/queue/notifications",
+                    response
+            );
+        }
     }
 
     @Override
