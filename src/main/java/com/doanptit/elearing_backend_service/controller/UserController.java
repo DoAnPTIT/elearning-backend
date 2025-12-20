@@ -1,10 +1,14 @@
 package com.doanptit.elearing_backend_service.controller;
 
 import com.doanptit.elearing_backend_service.dto.ApiResponse;
+import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
+import com.doanptit.elearing_backend_service.dto.req.ReviewRequestDto;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
+import com.doanptit.elearing_backend_service.dto.res.ReviewResponseDto;
 import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
+import com.doanptit.elearing_backend_service.service.ReviewService;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +27,7 @@ import java.security.Principal;
 public class UserController {
 
     private final UserService userService;
+    private final ReviewService reviewService;
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER') or hasRole('STUDENT')")
     @PatchMapping("/{id}/change-password")
@@ -52,5 +57,32 @@ public class UserController {
     ) {
         ApiResponse<UploadImageResponse> response = userService.uploadUserImage(userId, file);
         return ResponseEntity.ok(response);
+    }
+
+    // api: rating va danh gia khoa hoc
+    @PostMapping("/review/course/{courseId}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<ReviewResponseDto>> submitReview(
+            @PathVariable Long courseId,
+            @RequestBody @Valid ReviewRequestDto request,
+            Authentication authentication
+    ) {
+        String userEmail = authentication.getName();
+
+        ReviewResponseDto response = reviewService.createOrUpdateReview(courseId, userEmail, request);
+
+        return ResponseEntity.ok(ApiResponse.success("Cảm ơn bạn đã đánh giá khóa học!", response));
+    }
+
+
+     //API: Xem danh sách đánh giá của khóa học
+    @GetMapping("/review/course/{courseId}")
+    public ResponseEntity<ApiResponse<PagedResponse<ReviewResponseDto>>> getCourseReviews(
+            @PathVariable Long courseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PagedResponse<ReviewResponseDto> response = reviewService.getCourseReviews(courseId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

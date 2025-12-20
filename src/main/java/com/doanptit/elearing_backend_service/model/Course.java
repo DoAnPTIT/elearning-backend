@@ -54,5 +54,11 @@ public class Course extends BaseEntity {
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
+
+    @Column(name = "average_rating")
+    private Double averageRating = 0.0;
+
+    @Column(name = "total_reviews")
+    private Integer totalReviews = 0;
 }
 
