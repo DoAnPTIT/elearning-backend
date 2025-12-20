@@ -42,7 +42,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public CommentResponseDto createComment(Long lessonId, CommentRequestDto request, String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
+        User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Lesson lesson = lessonRepository.findById(lessonId)
@@ -50,11 +50,11 @@ public class CommentServiceImpl implements CommentService {
 
         Comment comment = new Comment();
         comment.setContent(request.getContent());
-        comment.setCreatedByUser(user);
-        comment.setUpdatedByUser(user);
+        comment.setCreatedByUser(currentUser);
+        comment.setUpdatedByUser(currentUser);
         comment.setLesson(lesson);
 
-        // Xử lý Reply
+        // 2. Xử lý logic Reply và Notification
         if (request.getParentId() != null) {
             Comment parent = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
@@ -64,40 +64,38 @@ public class CommentServiceImpl implements CommentService {
             }
             comment.setParentComment(parent);
 
-            // 1. Tạo tập hợp nhận tin (Chỉ làm 1 lần thôi)
-            Set<String> recipientEmails = new HashSet<>();
-
-            // A. Thêm chủ nhân comment gốc
-            recipientEmails.add(parent.getCreatedByUser().getEmail());
-
-            // B. Thêm những người đã reply khác
-            List<String> otherRepliers = commentRepository.findEmailsOfRepliers(parent.getId());
-            if (otherRepliers != null) {
-                recipientEmails.addAll(otherRepliers);
-            }
-
-            // C. Loại bỏ chính mình
-            recipientEmails.remove(userEmail);
-
-            // 2. Chuẩn bị nội dung
-            String replierName = user.getFirstname() + " " + user.getLastname();
+            // Chuẩn bị dữ liệu thông báo
+            String replierName = currentUser.getFirstname() + " " + currentUser.getLastname();
+            String parentAuthorEmail = parent.getCreatedByUser().getEmail();
             String parentAuthorName = parent.getCreatedByUser().getFirstname() + " " + parent.getCreatedByUser().getLastname();
             String lessonTitle = lesson.getTitle();
-            String courseTitle = lesson.getSection().getCourse().getTitle();
-
+            String link = String.format("/learning/%d?lesson=%d",
+                    lesson.getSection().getCourse().getId(), lesson.getId());
             String notiTitle = "Phản hồi bình luận mới";
-            String notiMessage = String.format("%s đã phản hồi bình luận về bình luận của %s trong bài giảng %s khóa học %s",
-                    replierName, parentAuthorName, lessonTitle, courseTitle);
-            String link = "/learning/" + lesson.getSection().getCourse().getId() + "?lesson=" + lesson.getId();
 
-            // 3. Gửi Batch
-            if (!recipientEmails.isEmpty()) {
+            // A. Thông báo cho chủ sở hữu comment gốc (Người được reply trực tiếp)
+            if (!parentAuthorEmail.equals(userEmail)) {
+                String msgForParent = String.format("%s đã phản hồi bình luận của bạn trong bài giảng %s",
+                        replierName, lessonTitle);
+
                 eventPublisher.publishEvent(new NotificationEvent(this,
-                        new ArrayList<>(recipientEmails), // Set -> List
-                        notiTitle,
-                        notiMessage,
-                        link
-                ));
+                        List.of(parentAuthorEmail), notiTitle, msgForParent, link));
+            }
+
+            // B. Thông báo cho những người khác đã từng reply trong thread này
+            List<String> otherReplierEmails = commentRepository.findEmailsOfRepliers(parent.getId());
+
+            // Loại bỏ chính mình và loại bỏ chủ comment gốc (vì đã gửi ở bước A)
+            Set<String> otherRecipients = new HashSet<>(otherReplierEmails);
+            otherRecipients.remove(userEmail);
+            otherRecipients.remove(parentAuthorEmail);
+
+            if (!otherRecipients.isEmpty()) {
+                String msgForOthers = String.format("%s đã phản hồi bình luận của %s trong bài giảng %s",
+                        replierName, parentAuthorName, lessonTitle);
+
+                eventPublisher.publishEvent(new NotificationEvent(this,
+                        new ArrayList<>(otherRecipients), notiTitle, msgForOthers, link));
             }
         }
 
