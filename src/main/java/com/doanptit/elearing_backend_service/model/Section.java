@@ -24,6 +24,9 @@ public class Section {
     @Column(name = "section_order")
     private Integer order;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;

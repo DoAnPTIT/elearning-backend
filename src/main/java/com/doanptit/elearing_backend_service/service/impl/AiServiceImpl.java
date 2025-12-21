@@ -157,9 +157,9 @@ public class AiServiceImpl implements AiService {
                 %s
                 %s
                 
-                <CONTEXT_DATABSE>
+                <CONTEXT_DATABASE>
                 %s
-                </CONTEXT_DATABSE>
+                </CONTEXT_DATABASE>
                 
                 Hãy trả lời dựa trên thẻ <CONTEXT_DATABASE> ở trên.
                 """.formatted(BASE_SYSTEM_PROMPT, modeInstruction, context);

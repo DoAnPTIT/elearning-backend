@@ -8,6 +8,7 @@ public class AdminSectionDto {
     private Long id;
     private String title;
     private Integer order;
+    private String description;
     private List<AdminLessonDto> lessons;
     private List<AdminExamDto> exams;
 }

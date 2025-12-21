@@ -11,5 +11,6 @@ public class AdminLessonDto {
     private String videoUrl;
     private Long duration;
     private String articleContent;
+    private String note;
     private Integer order;
 }

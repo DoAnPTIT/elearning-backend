@@ -1,12 +1,10 @@
 package com.doanptit.elearing_backend_service.dto.req;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class CreateSectionRequestDto {
-    @NotBlank(message = "Tiêu đề chương không được để trống")
+public class UpdateSectionRequestDto {
     private String title;
 
     @JsonProperty("section_order")
@@ -14,3 +12,4 @@ public class CreateSectionRequestDto {
 
     private String description;
 }
+

@@ -61,9 +61,4 @@ public class CourseController {
 
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
-
-    @GetMapping("/categories")
-    public ResponseEntity<ApiResponse<CourseCategory[]>> getCategories() {
-        return ResponseEntity.ok(ApiResponse.success(CourseCategory.values()));
-    }
 }

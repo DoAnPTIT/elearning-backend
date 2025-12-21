@@ -25,6 +25,9 @@ public class Course extends BaseEntity {
 
     private String description;
 
+    @Column(name = "short_description", columnDefinition = "TEXT")
+    private String shortDescription;
+
     @Enumerated(EnumType.STRING)
     private CourseStatus status;
 

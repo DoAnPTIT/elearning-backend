@@ -8,5 +8,6 @@ public class SectionDto {
     private Long id;
     private String title;
     private Integer order;
+    private String description;
     private List<LessonDto> lessons;
 }

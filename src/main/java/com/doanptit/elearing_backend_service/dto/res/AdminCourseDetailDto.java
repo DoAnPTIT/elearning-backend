@@ -10,6 +10,7 @@ public class AdminCourseDetailDto {
     private Long id;
     private String title;
     private String description;
+    private String shortDescription;
     private CourseStatus status;
     private String image;
     private String objectives;
