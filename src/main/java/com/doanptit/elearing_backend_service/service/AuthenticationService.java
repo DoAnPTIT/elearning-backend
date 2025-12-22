@@ -51,6 +51,10 @@ public class AuthenticationService {
 
             log.debug("Người dùng xác thực thành công: {}", user.getUsername());
 
+            // Cập nhật thời gian đăng nhập
+            user.setLastLogin(LocalDateTime.now());
+            userRepository.save(user); // Lưu vào DB
+
             String token = jwtUtil.generateToken(user.getUsername(), user.getRole().name());
             return new LoginResponse(token, user);
 
@@ -95,12 +99,31 @@ public class AuthenticationService {
 
         String resetLink = "http://localhost:5173/reset-password?token=" + token;
         String subject = "[Elearning PTIT] Yêu cầu đặt lại mật khẩu";
-        String body = "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n\n"
-                + "👉 Nhấn vào đây để đặt lại mật khẩu: " + resetLink
-                + "\n\nLink này chỉ có hiệu lực trong 15 phút."
-                + "\nNếu bạn không yêu cầu, vui lòng bỏ qua email này.";
 
-        emailService.sendEmail(user.getEmail(), subject, body);
+        // 🔥 SỬA ĐOẠN NÀY: Chuyển từ Text thường sang HTML
+        String htmlBody = String.format("""
+            <div style="font-family: Arial, sans-serif; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                <h3 style="color: #0056b3;">Xin chào %s,</h3>
+                <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
+                <div style="margin: 20px 0;">
+                    <a href="%s" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        👉 Đặt lại mật khẩu ngay
+                    </a>
+                </div>
+                <p>Hoặc truy cập link sau: <a href="%s">%s</a></p>
+                <p style="color: #666; font-size: 13px;">Link này chỉ có hiệu lực trong 15 phút.</p>
+                <hr style="border: none; border-top: 1px solid #eee;" />
+                <p style="font-size: 12px; color: #999;">Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
+            </div>
+            """,
+                user.getFirstname() != null ? user.getFirstname() : "bạn", // Lấy tên user cho thân thiện
+                resetLink,
+                resetLink,
+                resetLink
+        );
+
+        // Gọi hàm sendEmail (lúc này EmailService mới sẽ gửi HTML đẹp)
+        emailService.sendEmail(user.getEmail(), subject, htmlBody);
     }
 
     // Reset password
