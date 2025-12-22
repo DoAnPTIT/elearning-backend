@@ -6,6 +6,7 @@ import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.model.Notification;
 import com.doanptit.elearing_backend_service.repository.NotificationRepository;
+import com.doanptit.elearing_backend_service.service.EmailService;
 import com.doanptit.elearing_backend_service.service.NotificationService;
 import com.doanptit.elearing_backend_service.service.even.NotificationEvent;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationRepository notificationRepository;
+    private final EmailService emailService;
 
     @Override
     @Async
@@ -54,6 +56,8 @@ public class NotificationServiceImpl implements NotificationService {
                     .build();
 
             notificationsToSave.add(notification);
+
+            sendNotificationEmail(email, event);
         }
 
         // 2. Lưu Batch vào DB (Nhanh hơn lưu lẻ)
@@ -117,5 +121,23 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public long countUnread(String email) {
         return notificationRepository.countByRecipientIdAndIsReadFalse(email);
+    }
+
+    // Hàm phụ trợ để tạo nội dung HTML cho đẹp
+    private void sendNotificationEmail(String toEmail, NotificationEvent event) {
+        String subject = "[E-Learning] " + event.getTitle();
+
+        // Tạo nội dung HTML
+        String htmlContent = String.format("""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                <h2 style="color: #2c3e50;">Thông báo mới</h2>
+                <p style="font-size: 16px; color: #333;">%s</p>
+                <br>
+                <a href="http://localhost:5173%s" style="background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Xem chi tiết</a>
+                <p style="margin-top: 20px; font-size: 12px; color: #777;">Nếu nút trên không hoạt động, hãy copy link này: http://localhost:5173%s</p>
+            </div>
+            """, event.getMessage(), event.getTargetUrl(), event.getTargetUrl());
+
+        emailService.sendEmail(toEmail, subject, htmlContent);
     }
 }
