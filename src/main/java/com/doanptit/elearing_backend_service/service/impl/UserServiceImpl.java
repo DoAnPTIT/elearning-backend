@@ -557,4 +557,16 @@ public class UserServiceImpl implements UserService {
             return enrollmentSummaries;
         }
     }
+
+    @Override
+    @Transactional
+    public void completeMySurvey(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        if (Boolean.TRUE.equals(user.getHasCompletedSurvey())) {
+            return;
+        }
+        user.setHasCompletedSurvey(true);
+        userRepository.save(user);
+    }
 }

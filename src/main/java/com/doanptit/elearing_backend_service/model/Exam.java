@@ -29,6 +29,12 @@ public class Exam extends BaseEntity{
 
     private Boolean active = true;
 
+    @Column(name = "time_limit_minutes")
+    private Integer timeLimitMinutes;
+
+    @Column(name = "max_attempts")
+    private Integer maxAttempts;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id")
     private Section section;

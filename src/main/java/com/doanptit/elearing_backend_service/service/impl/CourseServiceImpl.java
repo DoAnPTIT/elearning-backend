@@ -59,6 +59,13 @@ public class CourseServiceImpl implements CourseService {
     public CreateCourseResponse createCourse(CreateCourseRequestDto request, String teacherEmail) {
         User author = userRepository.findByEmail(teacherEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        String title = request != null && request.getTitle() != null ? request.getTitle().trim() : null;
+        if (title != null && !title.isEmpty()
+                && courseRepository.existsByTitleIgnoreCaseAndDeletedOnIsNull(title)) {
+            throw new AppException(ErrorCode.COURSE_TITLE_EXISTS);
+        }
+
         Course course = courseMapper.toEntity(request);
         course.setAuthor(author);
         course.setStatus(CourseStatus.DRAFT);
@@ -185,6 +192,12 @@ public class CourseServiceImpl implements CourseService {
 
         Exam exam = examMapper.toEntity(request);
         exam.setSection(section);
+        if (request.getTimeLimitMinutes() != null) {
+            exam.setTimeLimitMinutes(request.getTimeLimitMinutes());
+        }
+        if (request.getMaxAttempts() != null) {
+            exam.setMaxAttempts(request.getMaxAttempts());
+        }
 
         List<Question> questions = new ArrayList<>();
         if (request.getQuestions() != null) {
@@ -579,20 +592,9 @@ public class CourseServiceImpl implements CourseService {
             throw new AppException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        // 2. Logic kiểm tra Student
-        // (Chúng ta mặc định người gọi API này là Student,
-        // vì Admin/Teacher sẽ gọi API riêng của họ)
-        String studentEmail = authentication.getName();
-        EnrollmentStatus status = enrollmentRepository.findEnrollmentStatus(studentEmail, courseId)
-                .orElse(null); // (null nếu chưa đăng ký)
-
-        if (status == EnrollmentStatus.APPROVED) {
-            // Đã được duyệt -> Trả về DTO
-            return publicCourseMapper.toCourseDetailDto(course);
-        }
-
-        // Nếu không (chưa đăng ký, PENDING, REJECTED) -> Báo lỗi
-        throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
+        // Cho phép STUDENT xem đầy đủ nội dung CourseDetail dù chưa được duyệt ghi danh.
+        // Việc chặn "vào học" sẽ nằm ở Lesson/Progress/Exam endpoints + FE guard.
+        return publicCourseMapper.toCourseDetailDto(course);
     }
 
     @Override

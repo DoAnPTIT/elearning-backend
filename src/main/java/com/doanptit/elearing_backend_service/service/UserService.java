@@ -30,4 +30,6 @@ public interface UserService {
     BatchCreationResult createUsersFromExcel(MultipartFile file, String role);
 
     ApiResponse<UploadImageResponse> uploadUserImage(Integer userId, MultipartFile file);
+
+    void completeMySurvey(String email);
 }

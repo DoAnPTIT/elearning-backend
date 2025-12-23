@@ -1,0 +1,21 @@
+ALTER TABLE exams
+ADD COLUMN IF NOT EXISTS time_limit_minutes INT;
+
+ALTER TABLE exams
+ADD COLUMN IF NOT EXISTS max_attempts INT;
+
+ALTER TABLE submissions
+ADD COLUMN IF NOT EXISTS created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS exam_attempt_state (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  exam_id INT NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+  attempts_used INT NOT NULL DEFAULT 0,
+  cooldown_until TIMESTAMP NULL,
+  last_started_at TIMESTAMP NULL,
+  updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, exam_id)
+);
+
+

@@ -9,10 +9,12 @@ import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.model.Course;
 import com.doanptit.elearing_backend_service.model.Enrollment;
+import com.doanptit.elearing_backend_service.model.Exam;
 import com.doanptit.elearing_backend_service.model.Lesson;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
 import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
+import com.doanptit.elearing_backend_service.repository.ExamRepository;
 import com.doanptit.elearing_backend_service.repository.LessonRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
@@ -44,6 +46,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final CourseRepository courseRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final LessonRepository lessonRepository;
+    private final ExamRepository examRepository;
 
     private static final String COMPLETED_LESSON_DELIMITER = ",";
 
@@ -253,10 +256,20 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             request.setCompleted(true);
         }
 
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+        Long courseId = null;
+        Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        if (lesson != null) {
+            courseId = lesson.getSection().getCourse().getId();
+        } else {
+            Exam exam = examRepository.findById(lessonId).orElse(null);
+            if (exam != null && exam.getSection() != null && exam.getSection().getCourse() != null) {
+                courseId = exam.getSection().getCourse().getId();
+            }
+        }
 
-        Long courseId = lesson.getSection().getCourse().getId();
+        if (courseId == null) {
+            throw new AppException(ErrorCode.LESSON_NOT_FOUND);
+        }
 
         Enrollment enrollment = enrollmentRepository
                 .findByUser_EmailAndCourse_Id(studentEmail, courseId)
@@ -298,16 +311,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
 
         Set<Long> completedLessons = extractCompletedLessonIds(enrollment);
-        long totalLessons = lessonRepository.countBySection_Course_Id(courseId);
-        float progressPercent = calculateProgressPercent(totalLessons, completedLessons.size());
+        long totalItems = lessonRepository.countBySection_Course_Id(courseId)
+                + examRepository.countBySection_Course_Id(courseId);
+        float progressPercent = calculateProgressPercent(totalItems, completedLessons.size());
 
-        return mapCourseProgressResponse(enrollment, totalLessons, completedLessons, progressPercent);
+        return mapCourseProgressResponse(enrollment, totalItems, completedLessons, progressPercent);
     }
 
     private CourseProgressResponse synchronizeEnrollmentProgress(Enrollment enrollment,
                                                                  Set<Long> completedLessonIds) {
         Long courseId = enrollment.getCourse().getId();
-        long totalLessons = lessonRepository.countBySection_Course_Id(courseId);
+        long totalLessons = lessonRepository.countBySection_Course_Id(courseId)
+                + examRepository.countBySection_Course_Id(courseId);
 
         float progressPercent = calculateProgressPercent(totalLessons, completedLessonIds.size());
 

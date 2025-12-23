@@ -59,6 +59,13 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/me/survey")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<Boolean>> completeMySurvey(Authentication authentication) {
+        userService.completeMySurvey(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã lưu khảo sát.", true));
+    }
+
     // api: rating va danh gia khoa hoc
     @PostMapping("/review/course/{courseId}")
     @PreAuthorize("hasRole('STUDENT')")

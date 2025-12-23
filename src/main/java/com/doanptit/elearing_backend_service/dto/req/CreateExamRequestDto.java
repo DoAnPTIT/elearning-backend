@@ -16,5 +16,7 @@ public class CreateExamRequestDto {
     @JsonProperty("exam_type")
     @NotNull
     private ExamType examType;
+    private Integer timeLimitMinutes;
+    private Integer maxAttempts;
     private List<CreateQuestionRequestDto> questions;
 }

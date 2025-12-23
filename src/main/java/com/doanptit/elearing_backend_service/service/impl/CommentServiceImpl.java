@@ -54,6 +54,27 @@ public class CommentServiceImpl implements CommentService {
         comment.setUpdatedByUser(currentUser);
         comment.setLesson(lesson);
 
+        // Notify course teacher about new comment/reply (unless the commenter is the teacher)
+        try {
+            var course = lesson.getSection() != null ? lesson.getSection().getCourse() : null;
+            var teacherEmail = course != null && course.getAuthor() != null ? course.getAuthor().getEmail() : null;
+            if (teacherEmail != null && !teacherEmail.equalsIgnoreCase(userEmail)) {
+                String actorName = (currentUser.getFirstname() + " " + currentUser.getLastname()).trim();
+                String lessonTitle = lesson.getTitle();
+                String courseTitle = course != null ? course.getTitle() : "";
+                boolean isReply = request.getParentId() != null;
+                String notiTitle = isReply ? "Phản hồi mới trong khóa học" : "Bình luận mới trong khóa học";
+                String msg = isReply
+                        ? String.format("%s đã phản hồi trong bài giảng %s (%s)", actorName, lessonTitle, courseTitle)
+                        : String.format("%s đã bình luận trong bài giảng %s (%s)", actorName, lessonTitle, courseTitle);
+                // Teacher can open feedback in teacher dashboard
+                String link = "/teacher";
+                eventPublisher.publishEvent(new NotificationEvent(this, teacherEmail, notiTitle, msg, link));
+            }
+        } catch (Exception ignored) {
+            // avoid blocking comment creation due to notification failures
+        }
+
         // 2. Xử lý logic Reply và Notification
         if (request.getParentId() != null) {
             Comment parent = commentRepository.findById(request.getParentId())
