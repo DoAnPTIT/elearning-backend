@@ -178,7 +178,7 @@ public class TeacherCourseController {
         enrollmentService.rejectEnrollment(enrollmentId, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã từ chối học viên."));
     }
-
+    // hello world
     @PutMapping("/{courseId}")
     public ResponseEntity<ApiResponse<AdminCourseDetailDto>> updateCourse(
             @PathVariable Long courseId,

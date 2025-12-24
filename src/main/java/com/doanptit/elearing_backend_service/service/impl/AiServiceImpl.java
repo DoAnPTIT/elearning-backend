@@ -9,6 +9,7 @@ import com.doanptit.elearing_backend_service.model.Section;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
 import com.doanptit.elearing_backend_service.service.AiService;
 import com.doanptit.elearing_backend_service.service.ChatHistoryService;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
@@ -36,19 +37,25 @@ public class AiServiceImpl implements AiService {
 
     // 🔥 PROMPT NÂNG CẤP: "Dằn mặt" AI để không bịa đặt
     private final String BASE_SYSTEM_PROMPT = """
-            Bạn là Trợ giảng AI chuyên nghiệp của hệ thống E-Learning do Minh Hiếu phát triển.
+            Bạn là Trợ lý ảo hỗ trợ học tập thông minh (Learning Assistant) của hệ thống E-Learning do đội ngũ Đồ ăn ngon PTIT phát triển.
             
-            NHIỆM VỤ:
-            Giải đáp thắc mắc của học viên CHỈ DỰA TRÊN thông tin được cung cấp trong phần CONTEXT.
+            QUY TẮC ỨNG XỬ (QUAN TRỌNG):
+            1. ĐỐI VỚI CÂU CHÀO HỎI XÃ GIAO (Ví dụ: "chào bạn", "hello", "hi", "bạn là ai"):
+               - Hãy trả lời thân thiện, ngắn gọn.
+               - Tự giới thiệu mình là "Trợ lý ảo hỗ trợ học tập".
+               - Hỏi người dùng cần hỗ trợ gì.
+               - TUYỆT ĐỐI KHÔNG tự ý nhắc đến tên khóa học hoặc nội dung bài học cụ thể trừ khi người dùng hỏi trước.
             
-            QUY TẮC BẤT KHẢ XÂM PHẠM:
-            1. KHÔNG được sử dụng kiến thức bên ngoài (Internet, training data cũ) để trả lời nếu Context không có.
-            2. Nếu Context không chứa thông tin người dùng hỏi, hãy trả lời: "Xin lỗi, tài liệu khóa học hiện tại chưa đề cập đến vấn đề này."
-            3. Trích dẫn tên [BÀI HỌC] hoặc [CHƯƠNG] chứa thông tin đó nếu có thể.
-            4. Không nhắc đến OpenAI, Groq, Llama, Meta.
-            5. Trả lời ngắn gọn, súc tích bằng tiếng Việt.
+            2. ĐỐI VỚI CÂU HỎI KIẾN THỨC/NỘI DUNG KHÓA HỌC:
+               - CHỈ trả lời dựa trên thông tin trong thẻ <CONTEXT_DATABASE>.
+               - KHÔNG bịa đặt thông tin nếu không có trong Context.
+               - Nếu không tìm thấy thông tin, hãy trả lời: "Xin lỗi, tài liệu hiện tại chưa đề cập đến vấn đề này."
+            
+            3. PHONG CÁCH TRẢ LỜI:
+               - Ngắn gọn, súc tích, chuyên nghiệp.
+               - Sử dụng tiếng Việt.
+               - Không nhắc đến OpenAI, Llama hay các mô hình AI khác.
             """;
-
     public AiServiceImpl(ChatClient.Builder builder,
                          VectorStore vectorStore,
                          CourseRepository courseRepository,
@@ -63,6 +70,7 @@ public class AiServiceImpl implements AiService {
 
     // --- 1. HÀM TRAIN TỪNG KHÓA (Cải tiến Smart Chunking) ---
     @Override
+    @Transactional
     public void ingestCourseData(Long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
@@ -76,9 +84,22 @@ public class AiServiceImpl implements AiService {
                 Tên khóa: %s
                 Mô tả: %s
                 Mục tiêu: %s
-                """.formatted(course.getTitle(), course.getDescription(), course.getObjectives());
-        documents.add(new Document(courseInfo, Map.of("courseId", courseId, "type", "info")));
-
+                Giảng viên: %s
+                Thể loại: %s
+                Đánh giá rating trung bình: %s
+                Đối tượng hướng tới: %s
+                Đánh giá từ người học: %s
+                """.formatted(course.getTitle(), course.getDescription(), course.getObjectives(), course.getAuthor().getFirstname()+ " "+course.getAuthor().getLastname(), course.getCategory(), course.getAverageRating(), course.getTargetAudience(), course.getTotalReviews());
+        documents.add(new Document(
+                courseInfo,
+                Map.of(
+                        "courseId", courseId,
+                        "type", "course_info",
+                        "author", course.getAuthor().getFirstname()+ " "+course.getAuthor().getLastname(),
+                        "category", course.getCategory(),
+                        "rating", course.getAverageRating()
+                )
+        ));
         // B. Nội dung bài học (Smart Chunking: Gắn nhãn Chương/Bài vào nội dung)
         if (course.getSections() != null) {
             for (Section section : course.getSections()) {
@@ -104,6 +125,7 @@ public class AiServiceImpl implements AiService {
         }
 
         TokenTextSplitter splitter = new TokenTextSplitter();
+
         List<Document> split = splitter.apply(documents);
         vectorStore.add(split);
         log.info(">>>> Hoàn tất Train khóa: " + course.getTitle());
@@ -157,9 +179,9 @@ public class AiServiceImpl implements AiService {
                 %s
                 %s
                 
-                <CONTEXT_DATABSE>
+                <CONTEXT_DATABASE>
                 %s
-                </CONTEXT_DATABSE>
+                </CONTEXT_DATABASE>
                 
                 Hãy trả lời dựa trên thẻ <CONTEXT_DATABASE> ở trên.
                 """.formatted(BASE_SYSTEM_PROMPT, modeInstruction, context);
