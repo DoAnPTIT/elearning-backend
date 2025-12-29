@@ -25,6 +25,7 @@ public class Question extends BaseEntity {
 
     private String content;
     private Integer point;
+    @Builder.Default
     private Boolean active = true;
 
     @ManyToOne

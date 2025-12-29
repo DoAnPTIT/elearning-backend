@@ -33,8 +33,8 @@ public class TemplateController {
             r = writeMetaRow(sheet, r, "EXAM_TYPE", examType.name());
             r = writeMetaRow(sheet, r, "TITLE", examType == ExamType.ASSIGNMENT ? "Bài tập mẫu" : "Bài kiểm tra mẫu");
             r = writeMetaRow(sheet, r, "DESCRIPTION", "Mô tả ngắn cho bài " + (examType == ExamType.ASSIGNMENT ? "tập" : "kiểm tra"));
-            r = writeMetaRow(sheet, r, "TIME_LIMIT_MINUTES", "30");
-            r = writeMetaRow(sheet, r, "MAX_ATTEMPTS", "2");
+            r = writeMetaRow(sheet, r, "TIME_LIMIT_MINUTES", "30"); // Thời gian làm bài (phút), để trống nếu không giới hạn
+            r = writeMetaRow(sheet, r, "MAX_ATTEMPTS", "2"); // Số lần làm bài tối đa, để trống nếu không giới hạn
 
             r += 1;
             Row header = sheet.createRow(r++);

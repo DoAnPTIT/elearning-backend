@@ -15,6 +15,8 @@ public class CourseDetailDto {
     private String targetAudience;
     private CourseCategory category;
     private AuthorDto author;
+    private Double averageRating;
+    private Integer totalReviews;
     private List<SectionDto> sections;
     private Long totalDuration; // Total duration in minutes
     private Integer totalLessons; // Total number of lessons

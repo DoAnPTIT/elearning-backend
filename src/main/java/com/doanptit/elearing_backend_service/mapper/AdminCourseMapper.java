@@ -13,9 +13,13 @@ public interface AdminCourseMapper {
     @Mapping(target = "sectionCount", expression = "java(course.getSections() == null ? 0 : course.getSections().size())")
     @Mapping(target = "totalStudents", expression = "java(course.getEnrollments() == null ? 0 : (int) course.getEnrollments().stream().filter(e -> e.getStatus() == com.doanptit.elearing_backend_service.enums.EnrollmentStatus.APPROVED).count())")
     @Mapping(target = "updatedAt", source = "updatedOn")
+    @Mapping(target = "totalDuration", ignore = true)
+    @Mapping(target = "totalLessons", ignore = true)
     AdminCourseListDto toCourseListDto(Course course);
 
     @Mapping(target = "author", source = "author")
+    @Mapping(target = "totalDuration", ignore = true)
+    @Mapping(target = "totalLessons", ignore = true)
     AdminCourseDetailDto toCourseDetailDto(Course course);
     AdminSectionDto toSectionDto(Section section);
     AdminLessonDto toLessonDto(Lesson lesson);

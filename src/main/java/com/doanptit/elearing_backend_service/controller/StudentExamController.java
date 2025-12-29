@@ -4,6 +4,7 @@ import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.req.ExamSubmitRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.ExamStartResponseDto;
 import com.doanptit.elearing_backend_service.dto.res.ExamSubmitResponseDto;
+import com.doanptit.elearing_backend_service.dto.res.QuestionResultDto;
 import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
@@ -157,6 +158,8 @@ public class StudentExamController {
         int score = 0;
         int maxScore = 0;
         List<Question> questions = Optional.ofNullable(exam.getQuestions()).orElse(Collections.emptyList());
+        List<QuestionResultDto> questionResults = new ArrayList<>();
+        
         for (Question q : questions) {
             if (q == null) continue;
             int point = q.getPoint() != null ? q.getPoint() : 0;
@@ -169,9 +172,22 @@ public class StudentExamController {
                     .collect(Collectors.toSet());
 
             Set<Long> chosen = submitted.getOrDefault(q.getId(), Collections.emptySet());
-            if (!correct.isEmpty() && correct.equals(chosen)) {
+            boolean isCorrect = !correct.isEmpty() && correct.equals(chosen);
+            if (isCorrect) {
                 score += point;
             }
+            
+            // Build question result for detailed response
+            QuestionResultDto questionResult = QuestionResultDto.builder()
+                    .questionId(q.getId())
+                    .questionContent(q.getContent())
+                    .correctAnswerIds(new ArrayList<>(correct))
+                    .userAnswerIds(new ArrayList<>(chosen))
+                    .isCorrect(isCorrect)
+                    .point(point)
+                    .earnedPoint(isCorrect ? point : 0)
+                    .build();
+            questionResults.add(questionResult);
         }
 
         Submission submission = Submission.builder()
@@ -203,6 +219,7 @@ public class StudentExamController {
                 .maxScore(maxScore)
                 .attemptsRemaining(attemptsRemaining)
                 .cooldownUntil(state.getCooldownUntil())
+                .questionResults(questionResults)
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(dto));

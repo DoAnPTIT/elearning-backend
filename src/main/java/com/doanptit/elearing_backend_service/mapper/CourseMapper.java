@@ -16,6 +16,9 @@ public interface CourseMapper {
     @Mapping(target = "enrollments", ignore = true)
     @Mapping(target = "sections", ignore = true)
     @Mapping(target = "author", ignore = true)
+    @Mapping(target = "rejectionReason", ignore = true)
+    @Mapping(target = "averageRating", ignore = true)
+    @Mapping(target = "totalReviews", ignore = true)
     Course toEntity(CreateCourseRequestDto dto);
 
     CreateCourseResponse toResponseDto(Course course);

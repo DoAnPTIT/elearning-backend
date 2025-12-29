@@ -18,6 +18,7 @@ public class Lesson extends BaseEntity {
 
     private String title;
     private String image;
+    @Builder.Default
     private Boolean active = true;
 
     @Enumerated(EnumType.STRING)

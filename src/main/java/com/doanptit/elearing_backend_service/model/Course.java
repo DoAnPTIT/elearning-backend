@@ -32,6 +32,7 @@ public class Course extends BaseEntity {
     private CourseStatus status;
 
     private String image;
+    @Builder.Default
     private Boolean active = true;
 
     @OneToMany(mappedBy = "course")
@@ -59,9 +60,11 @@ public class Course extends BaseEntity {
     private String rejectionReason;
 
     @Column(name = "average_rating")
+    @Builder.Default
     private Double averageRating = 0.0;
 
     @Column(name = "total_reviews")
+    @Builder.Default
     private Integer totalReviews = 0;
 }
 

@@ -53,10 +53,58 @@ services:
       - "./common-data/src/testFixtures/resources/sql:/docker-entrypoint-initdb.d"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elearningservice"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - elearning-backend-service-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - elearning-backend-service-network
+
+  recommendation-service:
+    build:
+      context: ../recommendation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://elearningservice:password@postgres:5432/elearing-backend-service
+      - REDIS_URL=redis://redis:6379/0
+      - RETRAIN_INTERVAL_MINUTES=30
+      - LOG_LEVEL=INFO
+    volumes:
+      - recommendation-models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - elearning-backend-service-network
+    restart: unless-stopped
 
 networks:
   elearning-backend-service-network:
     driver: bridge
     name: elearning-backend-service-network
+
+volumes:
+  redis-data:
+  recommendation-models:
