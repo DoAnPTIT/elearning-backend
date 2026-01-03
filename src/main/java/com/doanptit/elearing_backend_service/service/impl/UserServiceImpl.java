@@ -157,6 +157,9 @@ public class UserServiceImpl implements UserService {
                 }
             }
         }
+        if (orders.isEmpty()) {
+            orders.add(Sort.Order.asc("id"));
+        }
         
         Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by(orders));
         Page<User> userPage;
