@@ -36,7 +36,7 @@ public class UserRetentionScheduler {
                 <h3>Xin chào %s,</h3>
                 <p>Đã 7 ngày rồi chúng tôi chưa thấy bạn quay lại học tập.</p>
                 <p>Có rất nhiều bài giảng mới đang chờ bạn khám phá.</p>
-                <a href="http://localhost:3000/login">Quay lại học ngay</a>
+                <a href="http://localhost:5173/login">Quay lại học ngay</a>
                 """, user.getFirstname());
 
             // Gửi mail (Hàm này đã Async nên không lo chậm)
