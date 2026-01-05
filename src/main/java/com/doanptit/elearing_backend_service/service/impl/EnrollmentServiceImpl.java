@@ -7,14 +7,17 @@ import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
+import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.model.Course;
 import com.doanptit.elearing_backend_service.model.Enrollment;
 import com.doanptit.elearing_backend_service.model.Exam;
 import com.doanptit.elearing_backend_service.model.Lesson;
+import com.doanptit.elearing_backend_service.model.LessonProgress;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
 import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
 import com.doanptit.elearing_backend_service.repository.ExamRepository;
+import com.doanptit.elearing_backend_service.repository.LessonProgressRepository;
 import com.doanptit.elearing_backend_service.repository.LessonRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
@@ -47,8 +50,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final ApplicationEventPublisher eventPublisher;
     private final LessonRepository lessonRepository;
     private final ExamRepository examRepository;
+    private final LessonProgressRepository lessonProgressRepository;
 
     private static final String COMPLETED_LESSON_DELIMITER = ",";
+    private static final float MIN_VIDEO_COMPLETION_PERCENTAGE = 90.0f;
 
     @Override
     @Transactional
@@ -258,8 +263,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         Long courseId = null;
         Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        boolean isVideoLesson = false;
+        
         if (lesson != null) {
             courseId = lesson.getSection().getCourse().getId();
+            isVideoLesson = lesson.getLessonType() == LessonType.VIDEO;
         } else {
             Exam exam = examRepository.findById(lessonId).orElse(null);
             if (exam != null && exam.getSection() != null && exam.getSection().getCourse() != null) {
@@ -282,8 +290,46 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Float progressValue = request.getProgress();
         Boolean completedFlag = request.getCompleted();
 
-        boolean markCompleted = Boolean.TRUE.equals(completedFlag) ||
-                (progressValue != null && progressValue >= 100f);
+        // For video lessons, track watch progress
+        if (isVideoLesson && lesson != null && progressValue != null) {
+            LessonProgress lessonProgress = lessonProgressRepository
+                    .findByEnrollment_IdAndLesson_Id(enrollment.getId(), lessonId)
+                    .orElse(LessonProgress.builder()
+                            .enrollment(enrollment)
+                            .lesson(lesson)
+                            .watchProgress(0.0f)
+                            .lastWatchedPosition(0)
+                            .build());
+            
+            lessonProgress.setWatchProgress(Math.max(lessonProgress.getWatchProgress(), progressValue));
+            if (request.getLastWatchedPosition() != null) {
+                lessonProgress.setLastWatchedPosition(request.getLastWatchedPosition());
+            }
+            lessonProgressRepository.save(lessonProgress);
+        }
+
+        // Only mark as completed if:
+        // 1. For video lessons: watch progress >= 90%
+        // 2. For other lessons: completed flag is true or progress >= 100%
+        boolean markCompleted;
+        if (isVideoLesson && lesson != null) {
+            Float currentWatchProgress = 0.0f;
+            LessonProgress lessonProgress = lessonProgressRepository
+                    .findByEnrollment_IdAndLesson_Id(enrollment.getId(), lessonId)
+                    .orElse(null);
+            if (lessonProgress != null) {
+                currentWatchProgress = lessonProgress.getWatchProgress();
+            }
+            // Use the latest progress value if provided
+            if (progressValue != null) {
+                currentWatchProgress = Math.max(currentWatchProgress, progressValue);
+            }
+            markCompleted = Boolean.TRUE.equals(completedFlag) && 
+                    currentWatchProgress >= MIN_VIDEO_COMPLETION_PERCENTAGE;
+        } else {
+            markCompleted = Boolean.TRUE.equals(completedFlag) ||
+                    (progressValue != null && progressValue >= 100f);
+        }
 
         boolean shouldRemoveCompletion = Boolean.FALSE.equals(completedFlag) ||
                 (progressValue != null && progressValue < 100f);
