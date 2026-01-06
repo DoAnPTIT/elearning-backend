@@ -167,6 +167,39 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     @Override
+    public PagedResponse<?> getCourseEnrollmentsForAdmin(Long courseId, String status, int page, int size) {
+        // Verify course exists
+        courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdOn"));
+        Page<Enrollment> enrollmentPage;
+
+        if (status != null && !status.isEmpty()) {
+            try {
+                EnrollmentStatus enrollmentStatus = EnrollmentStatus.valueOf(status.toUpperCase());
+                enrollmentPage = enrollmentRepository.findByCourse_IdAndStatus(courseId, enrollmentStatus, pageable);
+            } catch (IllegalArgumentException e) {
+                enrollmentPage = enrollmentRepository.findByCourse_Id(courseId, pageable);
+            }
+        } else {
+            enrollmentPage = enrollmentRepository.findByCourse_Id(courseId, pageable);
+        }
+
+        List<Map<String, Object>> content = enrollmentPage.getContent().stream()
+                .map(this::mapEnrollmentToDto)
+                .collect(Collectors.toList());
+
+        return new PagedResponse<>(
+                content,
+                enrollmentPage.getNumber(),
+                enrollmentPage.getSize(),
+                enrollmentPage.getTotalElements(),
+                enrollmentPage.getTotalPages()
+        );
+    }
+
+    @Override
     public PagedResponse<?> getStudentEnrollments(String studentEmail, String status, int page, int size) {
         User student = userRepository.findByEmail(studentEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));

@@ -93,21 +93,20 @@ public class UserServiceImpl implements UserService {
         
         // Add statistics based on role
         if (user.getRole() == Role.TEACHER) {
+            var teacherCoursesPage = courseRepository.findByAuthor_Email(user.getEmail(), Pageable.unpaged());
+
             // Count courses authored by this teacher
-            long courseCount = courseRepository.findByAuthor_Email(user.getEmail(), Pageable.unpaged())
-                    .getTotalElements();
+            long courseCount = teacherCoursesPage.getTotalElements();
             dto.setCourseCount(courseCount);
             
             // Count total enrollments in teacher's courses
-            long totalEnrollments = courseRepository.findByAuthor_Email(user.getEmail(), Pageable.unpaged())
-                    .getContent()
+            long totalEnrollments = teacherCoursesPage.getContent()
                     .stream()
                     .mapToLong(course -> enrollmentRepository.findByCourse_Id(course.getId(), Pageable.unpaged()).getTotalElements())
                     .sum();
             dto.setStudentCount(totalEnrollments);
-            
-            // Rating can be calculated later if needed
-            dto.setRating(0.0);
+
+            dto.setRating(calculateTeacherAverageRating(teacherCoursesPage.getContent()));
         } else if (user.getRole() == Role.STUDENT) {
             StudentLearningSnapshot snapshot = computeStudentLearningSnapshot(user);
             dto.setCourseNames(snapshot.getCourseNames());
@@ -206,9 +205,8 @@ public class UserServiceImpl implements UserService {
                     .distinct()
                     .count();
             dto.setStudentCount((int) studentCount);
-            
-            // Calculate average rating (placeholder - need actual rating system)
-            dto.setRating(0.0);
+
+            dto.setRating(calculateTeacherAverageRating(teacherCourses));
         }
         
         // For students, derive enrollment stats/progress
@@ -222,6 +220,39 @@ public class UserServiceImpl implements UserService {
         }
         
         return dto;
+    }
+
+    private double calculateTeacherAverageRating(List<com.doanptit.elearing_backend_service.model.Course> courses) {
+        if (courses == null || courses.isEmpty()) {
+            return 0.0;
+        }
+
+        double weightedSum = 0.0;
+        long totalReviews = 0L;
+
+        for (var course : courses) {
+            if (course == null) {
+                continue;
+            }
+            Double avg = course.getAverageRating();
+            Integer count = course.getTotalReviews();
+
+            double avgValue = avg != null ? avg : 0.0;
+            long countValue = count != null ? count.longValue() : 0L;
+            if (countValue <= 0) {
+                continue;
+            }
+
+            weightedSum += avgValue * countValue;
+            totalReviews += countValue;
+        }
+
+        if (totalReviews <= 0) {
+            return 0.0;
+        }
+
+        double raw = weightedSum / totalReviews;
+        return Math.round(raw * 10.0) / 10.0;
     }
 
     @Override

@@ -17,6 +17,11 @@ public interface EnrollmentService {
      * Lấy danh sách enrollment của một khóa học (cho Teacher)
      */
     PagedResponse<?> getCourseEnrollments(Long courseId, String status, String teacherEmail, int page, int size);
+
+    /**
+     * Lấy danh sách enrollment của một khóa học (cho Admin).
+     */
+    PagedResponse<?> getCourseEnrollmentsForAdmin(Long courseId, String status, int page, int size);
     
     /**
      * Lấy danh sách enrollment của student hiện tại
