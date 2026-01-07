@@ -20,6 +20,8 @@ import com.doanptit.elearing_backend_service.repository.ExamRepository;
 import com.doanptit.elearing_backend_service.repository.LessonProgressRepository;
 import com.doanptit.elearing_backend_service.repository.LessonRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
+import com.doanptit.elearing_backend_service.dto.res.ChatRoomResponse;
+import com.doanptit.elearing_backend_service.service.ChatService;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import com.doanptit.elearing_backend_service.service.even.NotificationEvent;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +53,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final LessonRepository lessonRepository;
     private final ExamRepository examRepository;
     private final LessonProgressRepository lessonProgressRepository;
+    private final ChatService chatService;
 
     private static final String COMPLETED_LESSON_DELIMITER = ",";
     private static final float MIN_VIDEO_COMPLETION_PERCENTAGE = 90.0f;
@@ -100,6 +103,23 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         enrollmentRepository.save(enrollment);
+
+        // Tự động thêm học viên vào chat room của khóa học
+        try {
+            ChatRoomResponse room = chatService.getOrCreateChatRoomForCourse(
+                enrollment.getCourse().getId(), 
+                enrollment.getCourse().getAuthor().getEmail()
+            );
+            // Thêm học viên vào room (nếu chưa có)
+            chatService.addMemberToRoom(
+                room.getId(),
+                enrollment.getUser().getId(),
+                enrollment.getCourse().getAuthor().getEmail()
+            );
+        } catch (Exception e) {
+            // Log error nhưng không fail enrollment
+            System.err.println("Error adding student to chat room: " + e.getMessage());
+        }
 
         eventPublisher.publishEvent(new NotificationEvent(this,
                 enrollment.getUser().getEmail(),
