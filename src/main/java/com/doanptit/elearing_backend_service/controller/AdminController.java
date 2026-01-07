@@ -45,11 +45,17 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public ResponseEntity<ApiResponse<?>> getAllUsers(@RequestParam(defaultValue = "0") int page,
-                                                      @RequestParam(defaultValue = "10") int size,
-                                                      @RequestParam(required = false) String role,
-                                                      @RequestParam(defaultValue = "id,asc") String[] sort) {
-        return ResponseEntity.ok(ApiResponse.success(userService.findAllUsersForAdmin(page, size, role, sort)));
+    public ResponseEntity<ApiResponse<?>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String courseName,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(defaultValue = "id,asc") String[] sort) {
+        return ResponseEntity.ok(ApiResponse.success(
+                userService.findAllUsersForAdmin(page, size, role, name, email, courseName, active, sort)));
     }
 
     @GetMapping("/statistics")

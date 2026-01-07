@@ -32,6 +32,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -141,40 +145,97 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Page<AdminUserListDto> findAllUsersForAdmin(int pageNo, int pageSize, String role, String... sorts) {
+    public Page<AdminUserListDto> findAllUsersForAdmin(int pageNo, int pageSize, String role, 
+                                                        String name, String email, String courseName, Boolean active, String... sorts) {
+        // --- 1️⃣ Chuẩn hóa paging ---
+        if (pageNo < 0) pageNo = 0;
+        if (pageSize <= 0) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
+
+        // --- 2️⃣ Xử lý sort động ---
+        List<String> allowedFields = List.of("id", "email", "firstname", "lastname", "createdOn", "updatedOn");
         List<Sort.Order> orders = new ArrayList<>();
-        if(sorts!=null){
-            for(String sortBy: sorts){
-                Pattern pattern = Pattern.compile("(\\w+?)(:)(.*)");
-                Matcher matcher = pattern.matcher(sortBy);
-                if(matcher.find()){
-                    if(matcher.group(3).equalsIgnoreCase("asc")){
-                        orders.add(new Sort.Order(Sort.Direction.ASC, matcher.group(1)));
-                    }else{
-                        orders.add(new Sort.Order(Sort.Direction.DESC, matcher.group(1)));
+
+        if (sorts != null && sorts.length > 0) {
+            for (String sortBy : sorts) {
+                // Support both "field,asc" and "field:asc" formats
+                String[] parts = sortBy.contains(",") ? sortBy.split(",") : sortBy.split(":");
+                if (parts.length >= 2) {
+                    String field = parts[0].trim();
+                    String direction = parts[1].trim();
+                    if (allowedFields.contains(field)) {
+                        if (direction.equalsIgnoreCase("asc")) {
+                            orders.add(Sort.Order.asc(field));
+                        } else if (direction.equalsIgnoreCase("desc")) {
+                            orders.add(Sort.Order.desc(field));
+                        }
                     }
                 }
             }
         }
+
         if (orders.isEmpty()) {
             orders.add(Sort.Order.asc("id"));
         }
-        
-        Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by(orders));
-        Page<User> userPage;
-        
-        // Filter by role if provided
-        if (role != null && !role.isEmpty()) {
-            try {
-                Role roleEnum = Role.valueOf(role.toUpperCase());
-                userPage = userRepository.findByRole(roleEnum, pageable);
-            } catch (IllegalArgumentException e) {
-                userPage = userRepository.findAll(pageable);
+
+        Sort sortSpec = Sort.by(orders);
+        Pageable pageable = PageRequest.of(pageNo, pageSize, sortSpec);
+
+        // --- 3️⃣ Tạo Specification ---
+        Specification<User> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Filter by role
+            if (role != null && !role.isEmpty()) {
+                try {
+                    Role roleEnum = Role.valueOf(role.toUpperCase());
+                    predicates.add(cb.equal(root.get("role"), roleEnum));
+                } catch (IllegalArgumentException e) {
+                    // Invalid role, ignore filter
+                }
             }
-        } else {
-            userPage = userRepository.findAll(pageable);
-        }
-        
+
+            // Filter by name (firstname or lastname)
+            if (name != null && !name.isBlank()) {
+                String pattern = "%" + name.toLowerCase() + "%";
+                Predicate matchFirst = cb.like(cb.lower(root.get("firstname")), pattern);
+                Predicate matchLast = cb.like(cb.lower(root.get("lastname")), pattern);
+                // Also search in concatenated full name
+                Predicate matchFull = cb.like(
+                    cb.lower(cb.concat(
+                        cb.concat(cb.coalesce(root.get("firstname"), ""), " "),
+                        cb.coalesce(root.get("lastname"), "")
+                    )), pattern
+                );
+                predicates.add(cb.or(matchFirst, matchLast, matchFull));
+            }
+
+            // Filter by email
+            if (email != null && !email.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("email")), "%" + email.toLowerCase() + "%"));
+            }
+
+            // Filter by active status
+            if (active != null) {
+                predicates.add(cb.equal(root.get("active"), active));
+            }
+
+            // Filter by course name (join with enrollments -> course)
+            if (courseName != null && !courseName.isBlank()) {
+                Join<User, Enrollment> enrollments = root.join("enrollments", JoinType.LEFT);
+                Join<Enrollment, Course> course = enrollments.join("course", JoinType.LEFT);
+                String pattern = "%" + courseName.toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(course.get("title")), pattern));
+                query.distinct(true);
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        // --- 4️⃣ Truy vấn ---
+        Page<User> userPage = userRepository.findAll(spec, pageable);
+
+        // --- 5️⃣ Map to DTO ---
         return userPage.map(this::mapUserToAdminUserListDto);
     }
     
