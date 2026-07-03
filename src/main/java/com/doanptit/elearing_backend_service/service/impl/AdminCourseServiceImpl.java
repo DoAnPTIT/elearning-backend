@@ -6,11 +6,13 @@ import com.doanptit.elearing_backend_service.dto.res.AdminCourseDetailDto;
 import com.doanptit.elearing_backend_service.dto.res.AdminCourseListDto;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
+import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.event.CourseContentUpdatedEvent;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
 import com.doanptit.elearing_backend_service.mapper.AdminCourseMapper;
 import com.doanptit.elearing_backend_service.model.Course;
+import com.doanptit.elearing_backend_service.model.Enrollment;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
 import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
@@ -42,7 +44,7 @@ public class AdminCourseServiceImpl implements AdminCourseService {
     @Transactional(readOnly = true)
     public PagedResponse<AdminCourseListDto> getAllCourses(
             int page, int size, CourseStatus status, CourseCategory category,
-            String title, String authorName, String... sort
+            String title, String authorName, Boolean hasStudents, EnrollmentStatus enrollmentStatus, String... sort
     ) {
         // --- 1️⃣ Chuẩn hóa paging ---
         if (page < 0) page = 0;
@@ -105,6 +107,8 @@ public class AdminCourseServiceImpl implements AdminCourseService {
         System.out.println("Category filter: " + category);
         System.out.println("Title filter: " + title);
         System.out.println("Author filter: " + authorName);
+        System.out.println("Has students: " + hasStudents);
+        System.out.println("Enrollment status: " + enrollmentStatus);
         
         Specification<Course> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -124,6 +128,15 @@ public class AdminCourseServiceImpl implements AdminCourseService {
                 Predicate matchLast = cb.like(cb.lower(author.get("lastname")), pattern);
                 Predicate matchEmail = cb.like(cb.lower(author.get("email")), pattern);
                 predicates.add(cb.or(matchFirst, matchLast, matchEmail));
+                query.distinct(true);
+            }
+
+            // Filter courses that have enrollments (optionally by enrollment status)
+            if (Boolean.TRUE.equals(hasStudents) || enrollmentStatus != null) {
+                Join<Course, Enrollment> enrollments = root.join("enrollments", JoinType.INNER);
+                if (enrollmentStatus != null) {
+                    predicates.add(cb.equal(enrollments.get("status"), enrollmentStatus));
+                }
                 query.distinct(true);
             }
 

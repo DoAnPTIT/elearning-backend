@@ -7,14 +7,21 @@ import com.doanptit.elearing_backend_service.enums.CourseStatus;
 import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.exception.AppException;
 import com.doanptit.elearing_backend_service.exception.ErrorCode;
+import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.model.Course;
 import com.doanptit.elearing_backend_service.model.Enrollment;
+import com.doanptit.elearing_backend_service.model.Exam;
 import com.doanptit.elearing_backend_service.model.Lesson;
+import com.doanptit.elearing_backend_service.model.LessonProgress;
 import com.doanptit.elearing_backend_service.model.User;
 import com.doanptit.elearing_backend_service.repository.CourseRepository;
 import com.doanptit.elearing_backend_service.repository.EnrollmentRepository;
+import com.doanptit.elearing_backend_service.repository.ExamRepository;
+import com.doanptit.elearing_backend_service.repository.LessonProgressRepository;
 import com.doanptit.elearing_backend_service.repository.LessonRepository;
 import com.doanptit.elearing_backend_service.repository.UserRepository;
+import com.doanptit.elearing_backend_service.dto.res.ChatRoomResponse;
+import com.doanptit.elearing_backend_service.service.ChatService;
 import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import com.doanptit.elearing_backend_service.service.even.NotificationEvent;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +51,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final CourseRepository courseRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final LessonRepository lessonRepository;
+    private final ExamRepository examRepository;
+    private final LessonProgressRepository lessonProgressRepository;
+    private final ChatService chatService;
 
     private static final String COMPLETED_LESSON_DELIMITER = ",";
+    private static final float MIN_VIDEO_COMPLETION_PERCENTAGE = 90.0f;
 
     @Override
     @Transactional
@@ -93,6 +104,23 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setStatus(EnrollmentStatus.APPROVED);
         enrollmentRepository.save(enrollment);
 
+        // Tự động thêm học viên vào chat room của khóa học
+        try {
+            ChatRoomResponse room = chatService.getOrCreateChatRoomForCourse(
+                enrollment.getCourse().getId(), 
+                enrollment.getCourse().getAuthor().getEmail()
+            );
+            // Thêm học viên vào room (nếu chưa có)
+            chatService.addMemberToRoom(
+                room.getId(),
+                enrollment.getUser().getId(),
+                enrollment.getCourse().getAuthor().getEmail()
+            );
+        } catch (Exception e) {
+            // Log error nhưng không fail enrollment
+            System.err.println("Error adding student to chat room: " + e.getMessage());
+        }
+
         eventPublisher.publishEvent(new NotificationEvent(this,
                 enrollment.getUser().getEmail(),
                 "Đăng ký thành công",
@@ -130,6 +158,39 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (!course.getAuthor().getEmail().equals(teacherEmail)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdOn"));
+        Page<Enrollment> enrollmentPage;
+
+        if (status != null && !status.isEmpty()) {
+            try {
+                EnrollmentStatus enrollmentStatus = EnrollmentStatus.valueOf(status.toUpperCase());
+                enrollmentPage = enrollmentRepository.findByCourse_IdAndStatus(courseId, enrollmentStatus, pageable);
+            } catch (IllegalArgumentException e) {
+                enrollmentPage = enrollmentRepository.findByCourse_Id(courseId, pageable);
+            }
+        } else {
+            enrollmentPage = enrollmentRepository.findByCourse_Id(courseId, pageable);
+        }
+
+        List<Map<String, Object>> content = enrollmentPage.getContent().stream()
+                .map(this::mapEnrollmentToDto)
+                .collect(Collectors.toList());
+
+        return new PagedResponse<>(
+                content,
+                enrollmentPage.getNumber(),
+                enrollmentPage.getSize(),
+                enrollmentPage.getTotalElements(),
+                enrollmentPage.getTotalPages()
+        );
+    }
+
+    @Override
+    public PagedResponse<?> getCourseEnrollmentsForAdmin(Long courseId, String status, int page, int size) {
+        // Verify course exists
+        courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdOn"));
         Page<Enrollment> enrollmentPage;
@@ -253,10 +314,23 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             request.setCompleted(true);
         }
 
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+        Long courseId = null;
+        Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        boolean isVideoLesson = false;
+        
+        if (lesson != null) {
+            courseId = lesson.getSection().getCourse().getId();
+            isVideoLesson = lesson.getLessonType() == LessonType.VIDEO;
+        } else {
+            Exam exam = examRepository.findById(lessonId).orElse(null);
+            if (exam != null && exam.getSection() != null && exam.getSection().getCourse() != null) {
+                courseId = exam.getSection().getCourse().getId();
+            }
+        }
 
-        Long courseId = lesson.getSection().getCourse().getId();
+        if (courseId == null) {
+            throw new AppException(ErrorCode.LESSON_NOT_FOUND);
+        }
 
         Enrollment enrollment = enrollmentRepository
                 .findByUser_EmailAndCourse_Id(studentEmail, courseId)
@@ -269,8 +343,46 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Float progressValue = request.getProgress();
         Boolean completedFlag = request.getCompleted();
 
-        boolean markCompleted = Boolean.TRUE.equals(completedFlag) ||
-                (progressValue != null && progressValue >= 100f);
+        // For video lessons, track watch progress
+        if (isVideoLesson && lesson != null && progressValue != null) {
+            LessonProgress lessonProgress = lessonProgressRepository
+                    .findByEnrollment_IdAndLesson_Id(enrollment.getId(), lessonId)
+                    .orElse(LessonProgress.builder()
+                            .enrollment(enrollment)
+                            .lesson(lesson)
+                            .watchProgress(0.0f)
+                            .lastWatchedPosition(0)
+                            .build());
+            
+            lessonProgress.setWatchProgress(Math.max(lessonProgress.getWatchProgress(), progressValue));
+            if (request.getLastWatchedPosition() != null) {
+                lessonProgress.setLastWatchedPosition(request.getLastWatchedPosition());
+            }
+            lessonProgressRepository.save(lessonProgress);
+        }
+
+        // Only mark as completed if:
+        // 1. For video lessons: watch progress >= 90%
+        // 2. For other lessons: completed flag is true or progress >= 100%
+        boolean markCompleted;
+        if (isVideoLesson && lesson != null) {
+            Float currentWatchProgress = 0.0f;
+            LessonProgress lessonProgress = lessonProgressRepository
+                    .findByEnrollment_IdAndLesson_Id(enrollment.getId(), lessonId)
+                    .orElse(null);
+            if (lessonProgress != null) {
+                currentWatchProgress = lessonProgress.getWatchProgress();
+            }
+            // Use the latest progress value if provided
+            if (progressValue != null) {
+                currentWatchProgress = Math.max(currentWatchProgress, progressValue);
+            }
+            markCompleted = Boolean.TRUE.equals(completedFlag) && 
+                    currentWatchProgress >= MIN_VIDEO_COMPLETION_PERCENTAGE;
+        } else {
+            markCompleted = Boolean.TRUE.equals(completedFlag) ||
+                    (progressValue != null && progressValue >= 100f);
+        }
 
         boolean shouldRemoveCompletion = Boolean.FALSE.equals(completedFlag) ||
                 (progressValue != null && progressValue < 100f);
@@ -298,16 +410,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
 
         Set<Long> completedLessons = extractCompletedLessonIds(enrollment);
-        long totalLessons = lessonRepository.countBySection_Course_Id(courseId);
-        float progressPercent = calculateProgressPercent(totalLessons, completedLessons.size());
+        long totalItems = lessonRepository.countBySection_Course_Id(courseId)
+                + examRepository.countBySection_Course_Id(courseId);
+        float progressPercent = calculateProgressPercent(totalItems, completedLessons.size());
 
-        return mapCourseProgressResponse(enrollment, totalLessons, completedLessons, progressPercent);
+        return mapCourseProgressResponse(enrollment, totalItems, completedLessons, progressPercent);
     }
 
     private CourseProgressResponse synchronizeEnrollmentProgress(Enrollment enrollment,
                                                                  Set<Long> completedLessonIds) {
         Long courseId = enrollment.getCourse().getId();
-        long totalLessons = lessonRepository.countBySection_Course_Id(courseId);
+        long totalLessons = lessonRepository.countBySection_Course_Id(courseId)
+                + examRepository.countBySection_Course_Id(courseId);
 
         float progressPercent = calculateProgressPercent(totalLessons, completedLessonIds.size());
 

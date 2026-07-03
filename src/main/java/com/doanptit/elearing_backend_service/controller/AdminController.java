@@ -7,8 +7,10 @@ import com.doanptit.elearing_backend_service.dto.req.UserRequestDto;
 import com.doanptit.elearing_backend_service.dto.res.*;
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
 import com.doanptit.elearing_backend_service.enums.CourseStatus;
+import com.doanptit.elearing_backend_service.enums.EnrollmentStatus;
 import com.doanptit.elearing_backend_service.service.AdminCourseService;
 import com.doanptit.elearing_backend_service.service.AdminStatisticsService;
+import com.doanptit.elearing_backend_service.service.EnrollmentService;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class AdminController {
     private final UserService userService;
     private final AdminStatisticsService adminStatisticsService;
     private final AdminCourseService adminCourseService;
+    private final EnrollmentService enrollmentService;
 
     @PostMapping("/users")
     public ResponseEntity<ApiResponse<UserResponseDto>> createUser(@RequestBody @Valid UserRequestDto request) {
@@ -42,11 +45,17 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public ResponseEntity<ApiResponse<?>> getAllUsers(@RequestParam(defaultValue = "0") int page,
-                                                      @RequestParam(defaultValue = "10") int size,
-                                                      @RequestParam(required = false) String role,
-                                                      @RequestParam(defaultValue = "id,asc") String[] sort) {
-        return ResponseEntity.ok(ApiResponse.success(userService.findAllUsersForAdmin(page, size, role, sort)));
+    public ResponseEntity<ApiResponse<?>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String courseName,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(defaultValue = "id,asc") String[] sort) {
+        return ResponseEntity.ok(ApiResponse.success(
+                userService.findAllUsersForAdmin(page, size, role, name, email, courseName, active, sort)));
     }
 
     @GetMapping("/statistics")
@@ -74,12 +83,25 @@ public class AdminController {
             @RequestParam(required = false) CourseCategory category, // <-- Đây là code bạn gửi
             @RequestParam(required = false) String title, // <-- Đây là code bạn gửi
             @RequestParam(required = false) String authorName, // <-- Đây là code bạn gửi
+            @RequestParam(required = false) Boolean hasStudents,
+            @RequestParam(required = false) EnrollmentStatus enrollmentStatus,
             @RequestParam(defaultValue = "id,asc") String... sort
     ) {
         PagedResponse<AdminCourseListDto> courses =
-                adminCourseService.getAllCourses(page, size, status, category, title, authorName, sort);
+            adminCourseService.getAllCourses(page, size, status, category, title, authorName, hasStudents, enrollmentStatus, sort);
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
+
+        @GetMapping("/courses/{courseId}/enrollments")
+        public ResponseEntity<ApiResponse<PagedResponse<?>>> getCourseEnrollmentsForAdmin(
+            @PathVariable Long courseId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+        ) {
+        PagedResponse<?> enrollments = enrollmentService.getCourseEnrollmentsForAdmin(courseId, status, page, size);
+        return ResponseEntity.ok(ApiResponse.success(enrollments));
+        }
 
     // --- API MỚI: LẤY CHI TIẾT 1 KHÓA HỌC (DATA ĐA DẠNG) ---
     @GetMapping("/courses/{id}")

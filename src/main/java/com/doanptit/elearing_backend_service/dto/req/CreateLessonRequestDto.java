@@ -22,4 +22,6 @@ public class CreateLessonRequestDto {
     private Integer lessonOrder;
 
     private Integer duration; // Duration in seconds
+
+    private String note;
 }

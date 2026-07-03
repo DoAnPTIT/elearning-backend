@@ -9,11 +9,14 @@ public class CourseDetailDto {
     private Long id;
     private String title;
     private String description;
+    private String shortDescription;
     private String image;
     private String objectives;
     private String targetAudience;
     private CourseCategory category;
     private AuthorDto author;
+    private Double averageRating;
+    private Integer totalReviews;
     private List<SectionDto> sections;
     private Long totalDuration; // Total duration in minutes
     private Integer totalLessons; // Total number of lessons

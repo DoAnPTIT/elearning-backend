@@ -22,4 +22,6 @@ public interface CourseRepository extends JpaRepository<Course, Long>, JpaSpecif
     Page<Course> findAllApproved(Pageable pageable);
 
     List<Course> findByStatus(CourseStatus status);
+
+    boolean existsByTitleIgnoreCaseAndDeletedOnIsNull(String title);
 }

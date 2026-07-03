@@ -31,6 +31,14 @@ public interface CourseService {
 
     AdminCourseDetailDto getCourseForEdit(Long courseId, String teacherEmail);
 
+    // Section CRUD
+    SectionResponse updateSection(Long sectionId, UpdateSectionRequestDto request, String teacherEmail);
+    void deleteSection(Long sectionId, String teacherEmail);
+
+    // Lesson CRUD
+    LessonResponse updateLesson(Long lessonId, UpdateLessonRequestDto request, String teacherEmail);
+    void deleteLesson(Long lessonId, String teacherEmail);
+
     PagedResponse<CourseListDto> getAllPublicCourses(
             int page, int size, CourseCategory category,
             String title, String authorName, String... sort

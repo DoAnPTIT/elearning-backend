@@ -4,11 +4,14 @@ import com.doanptit.elearing_backend_service.dto.ApiResponse;
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.req.ChangePasswordRequest;
 import com.doanptit.elearing_backend_service.dto.req.ReviewRequestDto;
+import com.doanptit.elearing_backend_service.dto.req.SurveyRequest;
 import com.doanptit.elearing_backend_service.dto.req.UpdateProfileRequest;
 import com.doanptit.elearing_backend_service.dto.res.ReviewResponseDto;
 import com.doanptit.elearing_backend_service.dto.res.UploadImageResponse;
+import com.doanptit.elearing_backend_service.dto.res.UserPreferenceResponse;
 import com.doanptit.elearing_backend_service.dto.res.UserResponseDto;
 import com.doanptit.elearing_backend_service.service.ReviewService;
+import com.doanptit.elearing_backend_service.service.UserPreferenceService;
 import com.doanptit.elearing_backend_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,7 @@ public class UserController {
 
     private final UserService userService;
     private final ReviewService reviewService;
+    private final UserPreferenceService userPreferenceService;
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER') or hasRole('STUDENT')")
     @PatchMapping("/{id}/change-password")
@@ -57,6 +61,39 @@ public class UserController {
     ) {
         ApiResponse<UploadImageResponse> response = userService.uploadUserImage(userId, file);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Complete survey with preferences (new version - saves preferences).
+     */
+    @PostMapping("/me/survey")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<UserPreferenceResponse>> completeSurveyWithPreferences(
+            Authentication authentication,
+            @Valid @RequestBody SurveyRequest request) {
+        UserPreferenceResponse preferences = userPreferenceService.saveSurveyPreferences(
+                authentication.getName(), request);
+        return ResponseEntity.ok(ApiResponse.success("Đã lưu khảo sát và sở thích học tập.", preferences));
+    }
+
+    /**
+     * Legacy endpoint - just marks survey as complete without preferences.
+     */
+    @PatchMapping("/me/survey")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<Boolean>> completeMySurvey(Authentication authentication) {
+        userService.completeMySurvey(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã lưu khảo sát.", true));
+    }
+
+    /**
+     * Get current user's learning preferences.
+     */
+    @GetMapping("/me/preferences")
+    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<UserPreferenceResponse>> getMyPreferences(Authentication authentication) {
+        UserPreferenceResponse preferences = userPreferenceService.getPreferences(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(preferences));
     }
 
     // api: rating va danh gia khoa hoc

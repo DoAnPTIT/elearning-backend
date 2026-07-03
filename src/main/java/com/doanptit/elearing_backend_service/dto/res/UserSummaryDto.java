@@ -24,6 +24,7 @@ public class UserSummaryDto {
     private Role role;
     private String image;
     private Boolean active;
+    private Boolean hasCompletedSurvey;
 
     public UserSummaryDto(User user) {
         this.id = user.getId();
@@ -34,5 +35,6 @@ public class UserSummaryDto {
         this.role = user.getRole();
         this.image = user.getImage();
         this.active = user.getActive();
+        this.hasCompletedSurvey = user.getHasCompletedSurvey();
     }
 }

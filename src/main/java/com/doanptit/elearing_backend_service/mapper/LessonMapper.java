@@ -10,6 +10,8 @@ import org.mapstruct.Mapping;
 public interface LessonMapper {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "image", ignore = true)
+    @Mapping(target = "active", ignore = true)
     @Mapping(target = "section", ignore = true)
     @Mapping(target = "videoUrl", ignore = true)
     @Mapping(target = "articleContent", ignore = true)

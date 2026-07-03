@@ -84,6 +84,25 @@ public class TeacherCourseController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newSection));
     }
 
+    // Cập nhật chương
+    @PutMapping("/sections/{sectionId}")
+    public ResponseEntity<ApiResponse<SectionResponse>> updateSection(
+            @PathVariable Long sectionId,
+            @RequestBody UpdateSectionRequestDto request,
+            Authentication authentication) {
+        SectionResponse updated = courseService.updateSection(sectionId, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(updated));
+    }
+
+    // Xóa chương
+    @DeleteMapping("/sections/{sectionId}")
+    public ResponseEntity<ApiResponse<String>> deleteSection(
+            @PathVariable Long sectionId,
+            Authentication authentication) {
+        courseService.deleteSection(sectionId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa chương thành công"));
+    }
+
     // Bước 3: Tạo bài giảng mới trong chương
     @PostMapping("/sections/{sectionId}/lessons")
     public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
@@ -92,6 +111,25 @@ public class TeacherCourseController {
             Authentication authentication) {
         LessonResponse newLesson = courseService.createLesson(sectionId, request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(newLesson));
+    }
+
+    // Cập nhật bài học
+    @PutMapping("/lessons/{lessonId}")
+    public ResponseEntity<ApiResponse<LessonResponse>> updateLesson(
+            @PathVariable Long lessonId,
+            @RequestBody UpdateLessonRequestDto request,
+            Authentication authentication) {
+        LessonResponse updated = courseService.updateLesson(lessonId, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(updated));
+    }
+
+    // Xóa bài học
+    @DeleteMapping("/lessons/{lessonId}")
+    public ResponseEntity<ApiResponse<String>> deleteLesson(
+            @PathVariable Long lessonId,
+            Authentication authentication) {
+        courseService.deleteLesson(lessonId, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa bài học thành công"));
     }
 
     // Bước 4: Upload video cho bài giảng

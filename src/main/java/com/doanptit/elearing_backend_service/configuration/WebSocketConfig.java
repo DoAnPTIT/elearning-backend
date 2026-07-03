@@ -61,6 +61,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
                     // 1. Lấy header Authorization từ gói tin STOMP
                     String authHeader = accessor.getFirstNativeHeader("Authorization");
+                    if (authHeader == null || authHeader.isBlank()) {
+                        // Một số client/bundler có thể gửi header key dạng lowercase
+                        authHeader = accessor.getFirstNativeHeader("authorization");
+                    }
 
                     if (authHeader != null && authHeader.startsWith("Bearer ")) {
                         String token = authHeader.substring(7); // Cắt bỏ chữ "Bearer "

@@ -59,6 +59,13 @@ public class CourseServiceImpl implements CourseService {
     public CreateCourseResponse createCourse(CreateCourseRequestDto request, String teacherEmail) {
         User author = userRepository.findByEmail(teacherEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        String title = request != null && request.getTitle() != null ? request.getTitle().trim() : null;
+        if (title != null && !title.isEmpty()
+                && courseRepository.existsByTitleIgnoreCaseAndDeletedOnIsNull(title)) {
+            throw new AppException(ErrorCode.COURSE_TITLE_EXISTS);
+        }
+
         Course course = courseMapper.toEntity(request);
         course.setAuthor(author);
         course.setStatus(CourseStatus.DRAFT);
@@ -81,6 +88,10 @@ public class CourseServiceImpl implements CourseService {
     public SectionResponse createSection(Long courseId, CreateSectionRequestDto request, String teacherEmail) {
         Course course = findCourseByIdAndAuthor(courseId, teacherEmail);
         Section section = sectionMapper.toEntity(request);
+        // Ensure description persists even if mapper config changes
+        if (request.getDescription() != null) {
+            section.setDescription(request.getDescription());
+        }
         section.setCourse(course);
         Section savedSection = sectionRepository.save(section);
         return sectionMapper.toSectionResponseDto(savedSection);
@@ -116,6 +127,9 @@ public class CourseServiceImpl implements CourseService {
         Lesson lesson = lessonMapper.toEntity(request);
         if (request.getLessonType() == LessonType.ARTICLE) {
             lesson.setArticleContent(request.getArticleContent());
+        }
+        if (request.getNote() != null) {
+            lesson.setNote(request.getNote());
         }
         lesson.setSection(section);
 
@@ -178,6 +192,12 @@ public class CourseServiceImpl implements CourseService {
 
         Exam exam = examMapper.toEntity(request);
         exam.setSection(section);
+        if (request.getTimeLimitMinutes() != null) {
+            exam.setTimeLimitMinutes(request.getTimeLimitMinutes());
+        }
+        if (request.getMaxAttempts() != null) {
+            exam.setMaxAttempts(request.getMaxAttempts());
+        }
 
         List<Question> questions = new ArrayList<>();
         if (request.getQuestions() != null) {
@@ -338,6 +358,13 @@ public class CourseServiceImpl implements CourseService {
             changedFields.add("Mô tả");
         }
 
+        // -- Short Description --
+        if (request.getShortDescription() != null
+                && !request.getShortDescription().equals(course.getShortDescription())) {
+            course.setShortDescription(request.getShortDescription());
+            changedFields.add("Mô tả ngắn");
+        }
+
         // -- Objectives --
         if (request.getObjectives() != null
                 && !request.getObjectives().equals(course.getObjectives())) {
@@ -385,7 +412,7 @@ public class CourseServiceImpl implements CourseService {
                         studentEmails, // Gửi cả list
                         notificationTitle,
                         notificationMessage,
-                        "/learning/" + savedCourse.getId()
+                        "/courses/" + savedCourse.getId() + "/learn"
                 ));
             }
 
@@ -422,6 +449,86 @@ public class CourseServiceImpl implements CourseService {
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
         checkCourseAuthorship(course, teacherEmail);
         return adminCourseMapper.toCourseDetailDto(course);
+    }
+
+    // =============== SECTION CRUD ===============
+
+    @Override
+    @Transactional
+    public SectionResponse updateSection(Long sectionId, UpdateSectionRequestDto request, String teacherEmail) {
+        Section section = sectionRepository.findById(sectionId)
+                .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
+        checkCourseAuthorship(section.getCourse(), teacherEmail);
+
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            section.setTitle(request.getTitle());
+        }
+        if (request.getSectionOrder() != null) {
+            section.setOrder(request.getSectionOrder());
+        }
+        if (request.getDescription() != null) {
+            section.setDescription(request.getDescription());
+        }
+
+        Section saved = sectionRepository.save(section);
+        return sectionMapper.toSectionResponseDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSection(Long sectionId, String teacherEmail) {
+        Section section = sectionRepository.findById(sectionId)
+                .orElseThrow(() -> new AppException(ErrorCode.SECTION_NOT_FOUND));
+        checkCourseAuthorship(section.getCourse(), teacherEmail);
+        sectionRepository.delete(section);
+    }
+
+    // =============== LESSON CRUD ===============
+
+    @Override
+    @Transactional
+    public LessonResponse updateLesson(Long lessonId, UpdateLessonRequestDto request, String teacherEmail) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+        checkCourseAuthorship(lesson.getSection().getCourse(), teacherEmail);
+
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            lesson.setTitle(request.getTitle());
+        }
+        if (request.getLessonType() != null) {
+            lesson.setLessonType(request.getLessonType());
+        }
+        if (request.getArticleContent() != null) {
+            lesson.setArticleContent(request.getArticleContent());
+        }
+        if (request.getLessonOrder() != null) {
+            lesson.setOrder(request.getLessonOrder());
+        }
+        if (request.getDuration() != null) {
+            lesson.setDuration(request.getDuration().longValue());
+        }
+        if (request.getNote() != null) {
+            lesson.setNote(request.getNote());
+        }
+
+        Lesson saved = lessonRepository.save(lesson);
+
+        // Trigger AI training if course is ACTIVE
+        Course course = lesson.getSection().getCourse();
+        if (course.getStatus() == CourseStatus.ACTIVE) {
+            eventPublisher.publishEvent(new CourseContentUpdatedEvent(this, course.getId()));
+        }
+
+        return lessonMapper.toResponseDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteLesson(Long lessonId, String teacherEmail) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_FOUND));
+        checkCourseAuthorship(lesson.getSection().getCourse(), teacherEmail);
+        lessonRepository.delete(lesson);
     }
 
     private Course findCourseByIdAndAuthor(Long courseId, String teacherEmail) {
@@ -485,20 +592,9 @@ public class CourseServiceImpl implements CourseService {
             throw new AppException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        // 2. Logic kiểm tra Student
-        // (Chúng ta mặc định người gọi API này là Student,
-        // vì Admin/Teacher sẽ gọi API riêng của họ)
-        String studentEmail = authentication.getName();
-        EnrollmentStatus status = enrollmentRepository.findEnrollmentStatus(studentEmail, courseId)
-                .orElse(null); // (null nếu chưa đăng ký)
-
-        if (status == EnrollmentStatus.APPROVED) {
-            // Đã được duyệt -> Trả về DTO
-            return publicCourseMapper.toCourseDetailDto(course);
-        }
-
-        // Nếu không (chưa đăng ký, PENDING, REJECTED) -> Báo lỗi
-        throw new AppException(ErrorCode.ENROLLMENT_NOT_APPROVED);
+        // Cho phép STUDENT xem đầy đủ nội dung CourseDetail dù chưa được duyệt ghi danh.
+        // Việc chặn "vào học" sẽ nằm ở Lesson/Progress/Exam endpoints + FE guard.
+        return publicCourseMapper.toCourseDetailDto(course);
     }
 
     @Override

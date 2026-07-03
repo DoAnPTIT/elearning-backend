@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS lesson_notes (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  lesson_id INT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  content TEXT,
+  updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, lesson_id)
+);
+
+

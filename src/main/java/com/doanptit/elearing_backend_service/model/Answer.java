@@ -16,6 +16,7 @@ public class Answer  {
     private Long id;
 
     private String content;
+    @Builder.Default
     private Boolean isCorrect = false;
 
     @ManyToOne

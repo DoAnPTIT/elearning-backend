@@ -1,6 +1,7 @@
 package com.doanptit.elearing_backend_service.dto.req;
 
 import com.doanptit.elearing_backend_service.enums.CourseCategory;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,9 @@ public class CreateCourseRequestDto {
     private String title;
 
     private String description;
+
+    @JsonAlias({"short_description"})
+    private String shortDescription;
 
     private String objectives;
 

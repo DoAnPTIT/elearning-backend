@@ -13,8 +13,10 @@ public interface ExamMapper {
 
     // --- DTO -> Entity (chỉ map các trường cơ bản) ---
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "active", ignore = true)
     @Mapping(target = "section", ignore = true)
     @Mapping(target = "questions", ignore = true) // Sẽ map thủ công trong service
+    @Mapping(target = "submissions", ignore = true)
     Exam toEntity(CreateExamRequestDto dto);
 
     // --- Entity -> DTO (map lồng nhau) ---

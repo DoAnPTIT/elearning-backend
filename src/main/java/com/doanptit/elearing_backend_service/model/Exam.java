@@ -27,7 +27,14 @@ public class Exam extends BaseEntity{
     @Column(name = "exam_type", nullable = false)
     private ExamType examType;
 
+    @Builder.Default
     private Boolean active = true;
+
+    @Column(name = "time_limit_minutes")
+    private Integer timeLimitMinutes;
+
+    @Column(name = "max_attempts")
+    private Integer maxAttempts;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id")

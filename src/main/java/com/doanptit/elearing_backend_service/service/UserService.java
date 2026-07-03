@@ -21,7 +21,8 @@ public interface UserService {
 
     Page<UserResponseDto> findAllUsers(int pageNo, int pageSize, String... sorts);
 
-    Page<AdminUserListDto> findAllUsersForAdmin(int pageNo, int pageSize, String role, String... sorts);
+    Page<AdminUserListDto> findAllUsersForAdmin(int pageNo, int pageSize, String role, 
+                                                 String name, String email, String courseName, Boolean active, String... sorts);
 
     void changePassword(Integer id, String email, ChangePasswordRequest request);
 
@@ -30,4 +31,6 @@ public interface UserService {
     BatchCreationResult createUsersFromExcel(MultipartFile file, String role);
 
     ApiResponse<UploadImageResponse> uploadUserImage(Integer userId, MultipartFile file);
+
+    void completeMySurvey(String email);
 }

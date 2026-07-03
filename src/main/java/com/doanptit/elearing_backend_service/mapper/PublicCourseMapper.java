@@ -6,6 +6,7 @@ import com.doanptit.elearing_backend_service.enums.LessonType;
 import com.doanptit.elearing_backend_service.model.*;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 import java.util.ArrayList;
@@ -14,9 +15,16 @@ import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface PublicCourseMapper {
+    @Mapping(target = "totalDuration", ignore = true)
+    @Mapping(target = "totalLessons", ignore = true)
     CourseListDto toCourseListDto(Course course);
+
+    @Mapping(target = "totalDuration", ignore = true)
+    @Mapping(target = "totalLessons", ignore = true)
     CourseDetailDto toCourseDetailDto(Course course);
     SectionDto toSectionDto(Section section);
+
+    @Mapping(target = "examQuestions", ignore = true)
     LessonDto toLessonDto(Lesson lesson);
     AuthorDto toAuthorDto(User author);
 

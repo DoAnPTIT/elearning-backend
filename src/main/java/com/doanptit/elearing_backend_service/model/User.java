@@ -52,6 +52,10 @@ public class User extends BaseEntity implements UserDetails {
 
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
+    @Builder.Default
+    @Column(name = "has_completed_survey")
+    private Boolean hasCompletedSurvey = false;
+
 
     @OneToMany(mappedBy = "user")
     private List<Enrollment> enrollments;

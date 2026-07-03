@@ -42,6 +42,9 @@ public enum ErrorCode {
     INVALID_COURSE_STATUS_FOR_REVIEW("INVALID_COURSE_STATUS_FOR_REVIEW", "Trạng thái khóa học không hợp lệ để gửi duyệt", HttpStatus.BAD_REQUEST),
     COURSE_MISSING_COVER_IMAGE("COURSE_MISSING_COVER_IMAGE", "Khóa học phải có ảnh bìa để gửi duyệt", HttpStatus.BAD_REQUEST),
     COURSE_IS_EMPTY("COURSE_IS_EMPTY", "Khóa học phải có ít nhất một bài giảng hoặc bài kiểm tra", HttpStatus.BAD_REQUEST),
+    COURSE_TITLE_EXISTS("COURSE_TITLE_EXISTS", "Tên khóa học đã tồn tại", HttpStatus.BAD_REQUEST),
+    EXAM_COOLDOWN_ACTIVE("EXAM_COOLDOWN_ACTIVE", "Bạn đã hết lượt làm bài. Vui lòng thử lại sau 24 giờ.", HttpStatus.BAD_REQUEST),
+    EXAM_TIME_EXPIRED("EXAM_TIME_EXPIRED", "Đã hết thời gian làm bài.", HttpStatus.BAD_REQUEST),
 
     // 403 Forbidden / 401 Unauthorized
     ENROLLMENT_NOT_APPROVED("ENROLLMENT_NOT_APPROVED", "Bạn chưa đăng ký hoặc chưa được phê duyệt vào khóa học này", HttpStatus.FORBIDDEN),

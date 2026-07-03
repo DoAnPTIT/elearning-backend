@@ -57,5 +57,6 @@ public class Comment {
     // Danh sách các câu trả lời
     @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdOn ASC") // Comment con cũ nhất hiện trước (Flow giống FB)
+    @Builder.Default
     private List<Comment> replies = new ArrayList<>();
 }

@@ -27,6 +27,7 @@ public class PasswordResetToken {
     private LocalDateTime expiryDate;
 
     @Column(name = "delete_on", nullable = false)
+    @Builder.Default
     private boolean deletedOn = false;
 }
 

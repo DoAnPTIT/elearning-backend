@@ -11,4 +11,6 @@ public class CreateSectionRequestDto {
 
     @JsonProperty("section_order")
     private Integer sectionOrder;
+
+    private String description;
 }

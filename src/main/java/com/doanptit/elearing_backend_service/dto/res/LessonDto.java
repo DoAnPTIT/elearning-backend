@@ -14,5 +14,6 @@ public class LessonDto {
     private LessonType lessonType;
     private String videoUrl;
     private String articleContent;
+    private String note;
     private List<ExamQuestionDto> examQuestions;
 }

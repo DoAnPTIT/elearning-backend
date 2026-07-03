@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j // Thêm log để theo dõi quá trình train 100 khóa
+@Slf4j
 public class AiServiceImpl implements AiService {
 
     private final VectorStore vectorStore;
@@ -34,19 +34,20 @@ public class AiServiceImpl implements AiService {
     private final ChatClient chatClient;
     private final ChatHistoryService chatHistoryService;
 
-    // 🔥 PROMPT NÂNG CẤP: "Dằn mặt" AI để không bịa đặt
+    // 🔥 PROMPT V3: Tone giọng trung tính, chuyên nghiệp
     private final String BASE_SYSTEM_PROMPT = """
-            Bạn là Trợ giảng AI chuyên nghiệp của hệ thống E-Learning do Minh Hiếu phát triển.
+            Bạn là Trợ lý AI hỗ trợ học tập của hệ thống E-Learning.
             
             NHIỆM VỤ:
-            Giải đáp thắc mắc của học viên CHỈ DỰA TRÊN thông tin được cung cấp trong phần CONTEXT.
+            Hỗ trợ người dùng tìm kiếm khóa học phù hợp và giải đáp thắc mắc chuyên môn dựa trên dữ liệu được cung cấp.
             
-            QUY TẮC BẤT KHẢ XÂM PHẠM:
-            1. KHÔNG được sử dụng kiến thức bên ngoài (Internet, training data cũ) để trả lời nếu Context không có.
-            2. Nếu Context không chứa thông tin người dùng hỏi, hãy trả lời: "Xin lỗi, tài liệu khóa học hiện tại chưa đề cập đến vấn đề này."
-            3. Trích dẫn tên [BÀI HỌC] hoặc [CHƯƠNG] chứa thông tin đó nếu có thể.
-            4. Không nhắc đến OpenAI, Groq, Llama, Meta.
-            5. Trả lời ngắn gọn, súc tích bằng tiếng Việt.
+            NGUYÊN TẮC TRẢ LỜI:
+            1. CHỈ sử dụng thông tin trong phần [DỮ LIỆU NỘI BỘ] bên dưới để trả lời.
+            2. Tuyệt đối KHÔNG nhắc đến các thuật ngữ kỹ thuật như "Context", "Vector Store", "XML".
+            3. Nếu không tìm thấy thông tin trong dữ liệu, hãy trả lời: "Xin lỗi, hiện tại tài liệu hệ thống chưa có thông tin về vấn đề này."
+            4. Văn phong: Trung lập, lịch sự, ngắn gọn và đi thẳng vào vấn đề. Xưng hô là "Tôi" và gọi người dùng là "Bạn".
+            5. Khi đưa ra thông tin, hãy cố gắng trích dẫn nguồn (ví dụ: "Theo nội dung chương X...").
+            6. VỀ DANH TÍNH: Nếu được hỏi "Bạn là ai?", "Ai tạo ra bạn?", hãy trả lời duy nhất: "Tôi là Trợ lý AI của hệ thống E-Learning, được phát triển để hỗ trợ quá trình học tập của bạn." Tuyệt đối không nhắc đến Meta, Llama, OpenAI hay tên cá nhân nào khác.
             """;
 
     public AiServiceImpl(ChatClient.Builder builder,
@@ -57,43 +58,71 @@ public class AiServiceImpl implements AiService {
         this.courseRepository = courseRepository;
         this.chatHistoryService = chatHistoryService;
 
-        // Cấu hình Temperature thấp để AI bớt ảo giác
+        // Chỉ cần build đơn giản, vì mình đã xử lý history thủ công trong hàm chatWithCourse rồi
         this.chatClient = builder.build();
     }
 
-    // --- 1. HÀM TRAIN TỪNG KHÓA (Cải tiến Smart Chunking) ---
+    // --- 1. HÀM TRAIN TỪNG KHÓA (Cập nhật theo Entity mới) ---
     @Override
     public void ingestCourseData(Long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
-        log.info(">>>> Bắt đầu Train dữ liệu cho khóa: " + course.getTitle());
+        log.info(">>>> [AI TRAIN] Bắt đầu học khóa: {}", course.getTitle());
         List<Document> documents = new ArrayList<>();
 
-        // A. Thông tin chung
-        String courseInfo = """
-                [LOẠI: THÔNG TIN KHÓA HỌC]
-                Tên khóa: %s
-                Mô tả: %s
-                Mục tiêu: %s
-                """.formatted(course.getTitle(), course.getDescription(), course.getObjectives());
-        documents.add(new Document(courseInfo, Map.of("courseId", courseId, "type", "info")));
+        // A. Thông tin chung (Metadata chuẩn theo Entity Course)
+        // Xử lý tên giảng viên an toàn (tránh NullPointerException)
+        String authorName = (course.getAuthor() != null)
+                ? course.getAuthor().getLastname() + " " + course.getAuthor().getFirstname()
+                : "Giảng viên hệ thống";
 
-        // B. Nội dung bài học (Smart Chunking: Gắn nhãn Chương/Bài vào nội dung)
+        String categoryName = (course.getCategory() != null) ? course.getCategory().name() : "Chung";
+
+        // Tạo đoạn văn bản tổng quan để AI "hiểu" về khóa học này
+        String courseInfo = """
+                [LOẠI: TỔNG QUAN KHÓA HỌC]
+                Tên khóa học: %s
+                Giảng viên: %s
+                Danh mục: %s
+                Đánh giá: %.1f sao (%d lượt đánh giá)
+                Đối tượng học phù hợp: %s
+                Mô tả ngắn: %s
+                Mục tiêu khóa học: %s
+                """.formatted(
+                course.getTitle(),
+                authorName,
+                categoryName,
+                course.getAverageRating() != null ? course.getAverageRating() : 0.0,
+                course.getTotalReviews() != null ? course.getTotalReviews() : 0,
+                course.getTargetAudience() != null ? course.getTargetAudience() : "Mọi đối tượng",
+                course.getShortDescription() != null ? course.getShortDescription() : course.getDescription(),
+                course.getObjectives()
+        );
+
+        // Metadata giúp lọc và debug
+        documents.add(new Document(courseInfo, Map.of(
+                "courseId", courseId,
+                "type", "info",
+                "title", course.getTitle()
+        )));
+
+        // B. Nội dung bài học
         if (course.getSections() != null) {
             for (Section section : course.getSections()) {
                 if (section.getLessons() != null) {
                     for (Lesson l : section.getLessons()) {
+                        // Ưu tiên Article Content, nếu không có thì lấy Title làm nội dung (cho Video)
+                        String cleanContent = (l.getArticleContent() != null && !l.getArticleContent().isBlank())
+                                ? l.getArticleContent()
+                                : "Bài học dạng Video có tiêu đề: " + l.getTitle();
 
-                        String cleanContent = (l.getArticleContent() != null) ? l.getArticleContent() : "Video Lesson";
-
-                        // 🔥 Kỹ thuật: Gắn Context vào từng miếng thịt (Chunk)
                         String enrichedContent = """
                                 [KHÓA HỌC: %s]
                                 [CHƯƠNG: %s]
                                 [BÀI HỌC: %s]
                                 ----------------
-                                NỘI DUNG CHI TIẾT:
+                                NỘI DUNG KIẾN THỨC:
                                 %s
                                 """.formatted(course.getTitle(), section.getTitle(), l.getTitle(), cleanContent);
 
@@ -105,75 +134,91 @@ public class AiServiceImpl implements AiService {
 
         TokenTextSplitter splitter = new TokenTextSplitter();
         List<Document> split = splitter.apply(documents);
+
         vectorStore.add(split);
-        log.info(">>>> Hoàn tất Train khóa: " + course.getTitle());
+        log.info(">>>> [AI TRAIN] Hoàn tất học {} chunks cho khóa: {}", split.size(), course.getTitle());
     }
 
-    // --- 2. HÀM TRAIN TOÀN BỘ (Chạy 1 lần cho 100 khóa) ---
+    // --- 2. HÀM TRAIN TOÀN BỘ (Giữ nguyên logic) ---
     @Override
     public void ingestAllActiveCourses() {
-        // Lấy tất cả khóa học đang ACTIVE
         List<Course> activeCourses = courseRepository.findByStatus(CourseStatus.ACTIVE);
-        log.info(">>>> Tìm thấy {} khóa học ACTIVE. Đang tiến hành ingest...", activeCourses.size());
+        log.info(">>>> [AI BATCH] Tìm thấy {} khóa ACTIVE.", activeCourses.size());
 
         int count = 0;
         for (Course course : activeCourses) {
             try {
-                // Gọi lại hàm train lẻ ở trên
                 ingestCourseData(course.getId());
                 count++;
-                log.info(">>>> Tiến độ: {}/{}", count, activeCourses.size());
+                log.info(">>>> [AI BATCH] Tiến độ: {}/{}", count, activeCourses.size());
             } catch (Exception e) {
-                log.error(">>>> Lỗi khi ingest khóa ID {}: {}", course.getId(), e.getMessage());
-                // Continue chạy tiếp khóa sau chứ không dừng
+                log.error(">>>> [AI BATCH] Lỗi khóa ID {}: {}", course.getId(), e.getMessage());
             }
         }
-        log.info(">>>> HOÀN TẤT INGEST TOÀN BỘ HỆ THỐNG!");
     }
 
-    // --- 3. CHAT LOGIC (Prompt Structure) ---
+    // --- 3. CHAT LOGIC (Tăng TopK & Cải thiện Prompt) ---
     @Override
     public String chatWithCourse(String message, Long courseId, String userId) {
         String conversationId = (courseId != null) ? userId + "_course_" + courseId : userId + "_global";
 
-        // 1. Lưu User Message
+        // 1. Lưu tin nhắn User
         chatHistoryService.saveMessage(conversationId, "user", message);
 
-        // 2. Search Vector
-        SearchRequest searchRequest = SearchRequest.query(message).withTopK(4); // Tăng lên 4 để lấy nhiều context hơn
+        // 2. Tìm kiếm Vector (Retrieval)
+        // 🔥 TĂNG TOP_K: Global = 8 (quét rộng), Course = 6 (đọc sâu)
+        int topK = (courseId == null) ? 8 : 6;
+
+        SearchRequest searchRequest = SearchRequest.query(message).withTopK(topK);
+
         if (courseId != null) {
+            // Chat trong khóa học -> Lọc đúng ID khóa học
             searchRequest = searchRequest.withFilterExpression(new FilterExpressionBuilder().eq("courseId", courseId).build());
         }
-        List<Document> docs = vectorStore.similaritySearch(searchRequest);
-        String context = docs.stream().map(Document::getContent).collect(Collectors.joining("\n\n"));
+        // Chat Global -> Tìm trên toàn bộ (Không filter)
 
-        // 3. Lấy History
+        List<Document> docs = vectorStore.similaritySearch(searchRequest);
+
+        // Ghép nội dung tìm được
+        String context = docs.stream()
+                .map(d -> "--- THÔNG TIN THAM KHẢO ---\n" + d.getContent())
+                .collect(Collectors.joining("\n\n"));
+
+        // 3. Lấy lịch sử chat
         List<Message> history = chatHistoryService.getRecentMessages(conversationId, 6);
 
-        // 4. Prompt Engineering: Dùng thẻ XML giả lập để ngăn cách dữ liệu
-        String modeInstruction = (courseId != null) ? "Vai trò: TRỢ GIẢNG." : "Vai trò: TƯ VẤN VIÊN.";
+        // 4. Xây dựng Prompt
+        String userMode = (courseId != null)
+                ? "Người dùng đang hỏi về nội dung chuyên sâu của khóa học này."
+                : "Người dùng đang hỏi tổng quan trên toàn hệ thống. Hãy tư vấn dựa trên các khóa học tìm thấy.";
 
         String finalSystemText = """
                 %s
+                
+                NGỮ CẢNH:
                 %s
                 
-                <CONTEXT_DATABSE>
+                [DỮ LIỆU NỘI BỘ]
                 %s
-                </CONTEXT_DATABSE>
-                
-                Hãy trả lời dựa trên thẻ <CONTEXT_DATABASE> ở trên.
-                """.formatted(BASE_SYSTEM_PROMPT, modeInstruction, context);
+                """.formatted(BASE_SYSTEM_PROMPT, userMode, context);
 
         List<Message> messagesToSend = new ArrayList<>();
         messagesToSend.add(new SystemMessage(finalSystemText));
         messagesToSend.addAll(history);
 
-        // 5. Call AI
+        // 5. Gọi AI
         String aiResponse = chatClient.prompt().messages(messagesToSend).call().content();
 
-        // 6. Lưu AI Response
-        chatHistoryService.saveMessage(conversationId, "assistant", aiResponse);
+        // 6. Làm sạch & Lưu
+        String cleanResponse = sanitizeResponse(aiResponse);
+        chatHistoryService.saveMessage(conversationId, "assistant", cleanResponse);
 
-        return aiResponse;
+        return cleanResponse;
+    }
+
+    private String sanitizeResponse(String response) {
+        if (response == null) return "Hệ thống đang xử lý, vui lòng thử lại sau.";
+        // Xóa các thẻ nếu AI lỡ in ra
+        return response.replaceAll("(?i)\\[DỮ LIỆU NỘI BỘ\\]|\\[LOẠI:.*?\\]", "").trim();
     }
 }
