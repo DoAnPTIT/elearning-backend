@@ -26,10 +26,13 @@ jobs:
           --health-retries 5
 
       localstack:
-        image: localstack/localstack
+        # Pinned: LocalStack images from the "latest" tag onward require a
+        # LOCALSTACK_AUTH_TOKEN license, even for community features. 3.8 is
+        # the last known version that runs unauthenticated with anonymous
+        # credentials, which is what LocalStackDynamoDBConfig relies on.
+        image: localstack/localstack:3.8
         env:
           SERVICES: dynamodb
-          DEFAULT_REGION: us-east-1
         ports:
           - 4577:4566
         options: >-
