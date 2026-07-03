@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.listener;
 
+import com.doanptit.elearing_backend_service.configuration.AsyncConfig;
 import com.doanptit.elearing_backend_service.event.CourseContentUpdatedEvent;
 import com.doanptit.elearing_backend_service.service.AiService;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ public class AiTrainingListener {
 
     private final AiService aiService;
 
-    @Async
+    @Async(AsyncConfig.AI_TRAINING_EXECUTOR)
     @EventListener
     public void handleCourseContentUpdated(CourseContentUpdatedEvent event) {
         Long courseId = event.getCourseId();

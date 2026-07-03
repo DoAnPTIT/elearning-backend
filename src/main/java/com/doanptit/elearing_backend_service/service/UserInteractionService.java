@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.service;
 
+import com.doanptit.elearing_backend_service.configuration.AsyncConfig;
 import com.doanptit.elearing_backend_service.dto.req.InteractionRequest;
 import com.doanptit.elearing_backend_service.enums.InteractionType;
 import com.doanptit.elearing_backend_service.model.Course;
@@ -35,7 +36,7 @@ public class UserInteractionService {
      * Note: @Async and @Transactional don't work well together on the same method
      * because @Async runs on a different thread without transaction context.
      */
-    @Async
+    @Async(AsyncConfig.INTERACTION_EXECUTOR)
     public void trackInteractionAsync(String userEmail, InteractionRequest request) {
         trackInteraction(userEmail, request);
     }

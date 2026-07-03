@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.service;
 
+import com.doanptit.elearing_backend_service.configuration.AsyncConfig;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class EmailService {
     @Value("${app.email.from}")
     private String fromEmail;
 
-    @Async
+    @Async(AsyncConfig.EMAIL_NOTIFICATION_EXECUTOR)
     public void sendEmail(String to, String subject, String content) {
         try {
             MimeMessage message = mailSender.createMimeMessage();

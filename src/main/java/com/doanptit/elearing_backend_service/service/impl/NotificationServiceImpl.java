@@ -1,5 +1,6 @@
 package com.doanptit.elearing_backend_service.service.impl;
 
+import com.doanptit.elearing_backend_service.configuration.AsyncConfig;
 import com.doanptit.elearing_backend_service.dto.PagedResponse;
 import com.doanptit.elearing_backend_service.dto.res.NotificationResponse;
 import com.doanptit.elearing_backend_service.exception.AppException;
@@ -33,7 +34,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final EmailService emailService;
 
     @Override
-    @Async
+    @Async(AsyncConfig.EMAIL_NOTIFICATION_EXECUTOR)
     @EventListener
     @Transactional
     public void handleNotificationEvent(NotificationEvent event) {
